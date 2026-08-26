@@ -3,9 +3,9 @@ process.env.VITE_PSP_PUBLIC_KEY = 'pub_test_key';
 process.env.VITE_PSP_TOKENIZATION_URL = 'http://localhost/psp/v1';
 
 // Node 18+ native fetch bypasses MSW 1 — replace with XHR-based polyfill.
-import { fetch as xhrFetch, Headers, Request, Response } from 'whatwg-fetch';
+const wf = require('whatwg-fetch') as typeof import('whatwg-fetch');
 
-Object.defineProperty(globalThis, 'fetch', { value: xhrFetch, writable: true });
-Object.defineProperty(globalThis, 'Headers', { value: Headers, writable: true });
-Object.defineProperty(globalThis, 'Request', { value: Request, writable: true });
-Object.defineProperty(globalThis, 'Response', { value: Response, writable: true });
+Object.defineProperty(globalThis, 'fetch', { value: wf.fetch, writable: true, configurable: true });
+Object.defineProperty(globalThis, 'Headers', { value: wf.Headers, writable: true, configurable: true });
+Object.defineProperty(globalThis, 'Request', { value: wf.Request, writable: true, configurable: true });
+Object.defineProperty(globalThis, 'Response', { value: wf.Response, writable: true, configurable: true });
