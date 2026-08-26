@@ -22,6 +22,8 @@ export function Sheet({ open, title, onClose, children, className }: SheetProps)
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const previousFocus = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
@@ -37,7 +39,7 @@ export function Sheet({ open, title, onClose, children, className }: SheetProps)
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab' || !panel) return;
@@ -60,12 +62,12 @@ export function Sheet({ open, title, onClose, children, className }: SheetProps)
       document.body.style.overflow = prevOverflow;
       previousFocus.current?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
   const onScrimClick = (event: MouseEvent<HTMLButtonElement>) => {
-    if (event.target === event.currentTarget) onClose();
+    if (event.target === event.currentTarget) onCloseRef.current();
   };
 
   return (
@@ -91,7 +93,7 @@ export function Sheet({ open, title, onClose, children, className }: SheetProps)
             type="button"
             className={styles.close}
             aria-label="Close dialog"
-            onClick={onClose}
+            onClick={() => onCloseRef.current()}
           >
             ×
           </button>

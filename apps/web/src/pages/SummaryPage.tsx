@@ -24,6 +24,7 @@ export function SummaryPage() {
   const product = useAppSelector((s) => s.products.selected);
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const payKeyRef = useRef(`pay-${crypto.randomUUID()}`);
+  const payingRef = useRef(false);
   const termsId = useId();
   const dataId = useId();
 
@@ -72,14 +73,22 @@ export function SummaryPage() {
   }, [transaction, card, customer, delivery, ui.submitting, dispatch, navigate]);
 
   const onPay = async () => {
+    if (payingRef.current || ui.submitting) return;
     if (!acceptance.termsAccepted || !acceptance.dataAccepted) {
       setAcceptError(copy.acceptBoth);
       return;
     }
     setAcceptError(null);
-    const result = await dispatch(payCheckout(payKeyRef.current));
-    if (payCheckout.fulfilled.match(result)) {
-      navigate('/checkout/result');
+    payingRef.current = true;
+    try {
+      const result = await dispatch(payCheckout(payKeyRef.current));
+      if (payCheckout.fulfilled.match(result)) {
+        navigate('/checkout/result');
+      } else {
+        payingRef.current = false;
+      }
+    } catch {
+      payingRef.current = false;
     }
   };
 

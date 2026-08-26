@@ -119,7 +119,9 @@ export function ProductPage() {
             />
           </div>
 
-          {soldOut ? (
+          {status === 'loading' && !selected ? (
+            <Skeleton width="100%" height={44} aria-label="Loading CTA" />
+          ) : soldOut ? (
             <Button fullWidth disabled>
               {copy.soldOut}
             </Button>

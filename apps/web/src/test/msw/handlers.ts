@@ -160,8 +160,7 @@ export const handlers = [
         },
         card: { brand: 'visa', last4: '4242' },
         product: { name: PRODUCT.name, hours: 3 },
-        finalizedAt:
-          currentStatus === 'PENDING' ? undefined : new Date().toISOString(),
+        finalizedAt: new Date().toISOString(),
       } satisfies TransactionDto),
     );
   }),
