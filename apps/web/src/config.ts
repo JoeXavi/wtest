@@ -1,17 +1,19 @@
-const env = (
-  globalThis as unknown as {
-    __NORTE_ENV__?: Record<string, string>;
+function read(key: string, fallback = ''): string {
+  if (typeof process !== 'undefined' && process.env[key]) {
+    return process.env[key]!;
   }
-).__NORTE_ENV__;
-
-function read(key: string, fallback: string): string {
-  if (env?.[key]) return env[key]!;
-  if (typeof process !== 'undefined' && process.env[key]) return process.env[key]!;
   return fallback;
 }
 
+/** Runtime config — lazy getters so Jest setup can set process.env first. */
 export const config = {
-  apiBaseUrl: read('VITE_API_BASE_URL', '/api'),
-  pspPublicKey: read('VITE_PSP_PUBLIC_KEY', ''),
-  pspTokenizationUrl: read('VITE_PSP_TOKENIZATION_URL', ''),
+  get apiBaseUrl() {
+    return read('VITE_API_BASE_URL', '/api');
+  },
+  get pspPublicKey() {
+    return read('VITE_PSP_PUBLIC_KEY', '');
+  },
+  get pspTokenizationUrl() {
+    return read('VITE_PSP_TOKENIZATION_URL', '');
+  },
 };
