@@ -16,16 +16,11 @@ export default {
       },
     ],
   },
-  transformIgnorePatterns: [
-    '/node_modules/(?!(msw|@mswjs|until-async)/)',
-  ],
   moduleNameMapper: {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '\\.(svg|png|jpg|jpeg|webp|gif)$': '<rootDir>/src/test/fileMock.ts',
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@norte/contracts$': '<rootDir>/../../packages/contracts/src/index.ts',
-    '^msw/node$': '<rootDir>/node_modules/msw/lib/node/index.js',
-    '^msw$': '<rootDir>/node_modules/msw/lib/core/index.js',
   },
   setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
   collectCoverageFrom: [

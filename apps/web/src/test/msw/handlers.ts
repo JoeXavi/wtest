@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw';
+import { rest } from 'msw';
 import type {
   PayTransactionRequest,
   ProductDto,
@@ -49,35 +49,42 @@ const API = 'http://localhost/api';
 const PSP = 'http://localhost/psp/v1';
 
 export const handlers = [
-  http.get(`${API}/products`, () => {
-    return HttpResponse.json([{ ...PRODUCT, available }]);
+  rest.get(`${API}/products`, (_req, res, ctx) => {
+    return res(ctx.json([{ ...PRODUCT, available }]));
   }),
 
-  http.get(`${API}/products/:id`, () => {
-    return HttpResponse.json({ ...PRODUCT, available });
+  rest.get(`${API}/products/:id`, (_req, res, ctx) => {
+    return res(ctx.json({ ...PRODUCT, available }));
   }),
 
-  http.get(`${API}/stock/:id`, () => {
-    return HttpResponse.json({
-      productId: PRODUCT.productId,
-      available,
-      unit: 'HOUR',
-    });
+  rest.get(`${API}/stock/:id`, (_req, res, ctx) => {
+    return res(
+      ctx.json({
+        productId: PRODUCT.productId,
+        available,
+        unit: 'HOUR',
+      }),
+    );
   }),
 
-  http.post(`${API}/checkout/transactions`, async ({ request }) => {
-    const body = (await request.json()) as StartCheckoutRequest;
+  rest.post(`${API}/checkout/transactions`, async (req, res, ctx) => {
+    const body = (await req.json()) as StartCheckoutRequest;
     if (body.hours > available) {
-      return HttpResponse.json(
-        { code: 'INSUFFICIENT_STOCK', available, message: 'Out of stock' },
-        { status: 409 },
+      return res(
+        ctx.status(409),
+        ctx.json({
+          code: 'INSUFFICIENT_STOCK',
+          available,
+          message: 'Out of stock',
+        }),
       );
     }
     const itemCents = body.hours * 5_000_000;
     const baseFeeCents = 150_000;
     const deliveryFeeCents = 800_000;
-    return HttpResponse.json(
-      {
+    return res(
+      ctx.status(201),
+      ctx.json({
         transactionReference: 'NOR-TESTREF001',
         status: 'PENDING',
         amounts: {
@@ -96,20 +103,17 @@ export const handlers = [
             personalDataAuth: 'https://example.com/data',
           },
         },
-      },
-      { status: 201 },
+      }),
     );
   }),
 
-  http.post(
-    `${API}/checkout/transactions/:ref/pay`,
-    async ({ request }) => {
-      payCalls += 1;
-      const body = (await request.json()) as PayTransactionRequest;
-      // Simulate decline for specific last4
-      if (body.cardLast4 === '1111') {
-        currentStatus = 'DECLINED';
-        return HttpResponse.json({
+  rest.post(`${API}/checkout/transactions/:ref/pay`, async (req, res, ctx) => {
+    payCalls += 1;
+    const body = (await req.json()) as PayTransactionRequest;
+    if (body.cardLast4 === '1111') {
+      currentStatus = 'DECLINED';
+      return res(
+        ctx.json({
           transactionReference: 'NOR-TESTREF001',
           status: 'DECLINED',
           statusMessage: 'Insufficient funds',
@@ -119,11 +123,12 @@ export const handlers = [
             deliveryFeeCents: 800_000,
             totalCents: 15_950_000,
           },
-        });
-      }
-      currentStatus = 'PENDING';
-      // After pay, next poll will approve (tests can also set status)
-      return HttpResponse.json({
+        }),
+      );
+    }
+    currentStatus = 'PENDING';
+    return res(
+      ctx.json({
         transactionReference: 'NOR-TESTREF001',
         status: 'PENDING',
         amounts: {
@@ -132,60 +137,59 @@ export const handlers = [
           deliveryFeeCents: 800_000,
           totalCents: 15_950_000,
         },
-      });
-    },
-  ),
-
-  http.get(`${API}/transactions/:ref`, () => {
-    let status = currentStatus;
-    if (status === 'PENDING') {
-      // Auto-approve on second poll for happy path convenience
-      currentStatus = 'APPROVED';
-      status = 'APPROVED';
-      available = Math.max(0, available - 3);
-    }
-    return HttpResponse.json({
-      reference: 'NOR-TESTREF001',
-      status,
-      statusMessage: status === 'DECLINED' ? 'Insufficient funds' : undefined,
-      amounts: {
-        itemCents: 15_000_000,
-        baseFeeCents: 150_000,
-        deliveryFeeCents: 800_000,
-        totalCents: 15_950_000,
-      },
-      card: { brand: 'visa', last4: '4242' },
-      product: { name: PRODUCT.name, hours: 3 },
-      finalizedAt:
-        status === 'APPROVED' ||
-        status === 'DECLINED' ||
-        status === 'ERROR' ||
-        status === 'VOIDED'
-          ? new Date().toISOString()
-          : undefined,
-    } satisfies TransactionDto);
+      }),
+    );
   }),
 
-  http.post(`${PSP}/tokens/cards`, async ({ request }) => {
-    const body = (await request.json()) as { number?: string };
+  rest.get(`${API}/transactions/:ref`, (_req, res, ctx) => {
+    if (currentStatus === 'PENDING') {
+      currentStatus = 'APPROVED';
+      available = Math.max(0, available - 3);
+    }
+    return res(
+      ctx.json({
+        reference: 'NOR-TESTREF001',
+        status: currentStatus,
+        statusMessage:
+          currentStatus === 'DECLINED' ? 'Insufficient funds' : undefined,
+        amounts: {
+          itemCents: 15_000_000,
+          baseFeeCents: 150_000,
+          deliveryFeeCents: 800_000,
+          totalCents: 15_950_000,
+        },
+        card: { brand: 'visa', last4: '4242' },
+        product: { name: PRODUCT.name, hours: 3 },
+        finalizedAt:
+          currentStatus === 'PENDING' ? undefined : new Date().toISOString(),
+      } satisfies TransactionDto),
+    );
+  }),
+
+  rest.post(`${PSP}/tokens/cards`, async (req, res, ctx) => {
+    const body = (await req.json()) as { number?: string };
     const number = (body.number ?? '').replace(/\D/g, '');
     if (number.startsWith('4111111111111111')) {
-      return HttpResponse.json({
+      return res(
+        ctx.json({
+          status: 'CREATED',
+          data: {
+            id: 'tok_declined_test',
+            brand: 'VISA',
+            last_four: '1111',
+          },
+        }),
+      );
+    }
+    return res(
+      ctx.json({
         status: 'CREATED',
         data: {
-          id: 'tok_declined_test',
+          id: 'tok_approved_test',
           brand: 'VISA',
-          last_four: '1111',
+          last_four: number.slice(-4) || '4242',
         },
-      });
-    }
-    return HttpResponse.json({
-      status: 'CREATED',
-      data: {
-        id: 'tok_approved_test',
-        brand: 'VISA',
-        last_four: number.slice(-4) || '4242',
-      },
-    });
+      }),
+    );
   }),
 ];
