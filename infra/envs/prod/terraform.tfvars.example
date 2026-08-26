@@ -1,0 +1,28 @@
+aws_region   = "us-east-1"
+project      = "norte"
+environment  = "prod"
+domain_name  = "joexavisa.dev"
+create_zone  = true
+
+github_org  = "JoeXavi"
+github_repo = "wtest"
+
+create_oidc_provider   = true
+terraform_state_bucket = "REPLACE_WITH_BOOTSTRAP_BUCKET"
+
+table_name        = "norte-main"
+container_port    = 3000
+health_check_path = "/health"
+
+ecs_desired_count = 1
+ecs_cpu           = 256
+ecs_memory        = 512
+image_tag         = "latest"
+
+psp_base_url   = "https://sandbox.example-psp.co/v1"
+psp_public_key = "pub_test_replace_me"
+
+pricing_base_fee_cents     = 150000
+pricing_delivery_fee_cents = 800000
+reservation_ttl_seconds    = 900
+log_retention_days         = 14

@@ -1,0 +1,30 @@
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.btn {
+  width: var(--touch-min);
+  height: var(--touch-min);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.value {
+  min-width: 2ch;
+  text-align: center;
+  font-size: var(--text-section);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,130 @@
+name: Terraform
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/**"
+      - ".github/workflows/terraform.yml"
+  pull_request:
+    paths:
+      - "infra/**"
+      - ".github/workflows/terraform.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: terraform-prod
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+env:
+  TF_WORKING_DIR: infra/envs/prod
+  AWS_REGION: us-east-1
+
+jobs:
+  plan:
+    name: Format, validate, plan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+          terraform_wrapper: false
+
+      - name: Terraform fmt
+        id: fmt
+        run: terraform fmt -check -recursive ../../
+        continue-on-error: true
+
+      - name: Terraform init
+        run: terraform init -input=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        id: plan
+        run: |
+          terraform plan -input=false -no-color -out=tfplan \
+            -var="domain_name=${{ vars.TF_DOMAIN_NAME }}" \
+            -var="psp_base_url=${{ vars.TF_PSP_BASE_URL }}" \
+            -var="psp_public_key=${{ vars.TF_PSP_PUBLIC_KEY }}" \
+            -var="terraform_state_bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -var="create_zone=${{ vars.TF_CREATE_ZONE || 'true' }}" \
+            -var="create_oidc_provider=${{ vars.TF_CREATE_OIDC_PROVIDER || 'true' }}"
+          terraform show -no-color tfplan > tfplan.txt
+
+      - name: Comment plan on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('infra/envs/prod/tfplan.txt', 'utf8');
+            const truncated = plan.length > 60000
+              ? plan.slice(0, 60000) + '\n\n… truncated …'
+              : plan;
+            const body = `### Terraform plan (\`infra/envs/prod\`)\n\n\`\`\`\n${truncated}\n\`\`\``;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
+
+  apply:
+    name: Apply
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    environment: production
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_TERRAFORM_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+          terraform_wrapper: false
+
+      - name: Terraform init
+        run: terraform init -input=false
+
+      - name: Terraform apply
+        run: |
+          terraform apply -input=false -auto-approve \
+            -var="domain_name=${{ vars.TF_DOMAIN_NAME }}" \
+            -var="psp_base_url=${{ vars.TF_PSP_BASE_URL }}" \
+            -var="psp_public_key=${{ vars.TF_PSP_PUBLIC_KEY }}" \
+            -var="terraform_state_bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -var="create_zone=${{ vars.TF_CREATE_ZONE || 'true' }}" \
+            -var="create_oidc_provider=${{ vars.TF_CREATE_OIDC_PROVIDER || 'true' }}"

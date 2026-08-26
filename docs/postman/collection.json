@@ -1,0 +1,90 @@
+{
+  "info": {
+    "name": "Norte Checkout API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Public collection for the Norte checkout API"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/health"
+      }
+    },
+    {
+      "name": "List products",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/products"
+      }
+    },
+    {
+      "name": "Get product",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/products/01PRODUCTDEVHOURS0"
+      }
+    },
+    {
+      "name": "Get stock",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/stock/01PRODUCTDEVHOURS0"
+      }
+    },
+    {
+      "name": "Start checkout",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"productId\": \"01PRODUCTDEVHOURS0\",\n  \"hours\": 3,\n  \"customer\": {\n    \"email\": \"ana@example.com\",\n    \"fullName\": \"Ana Rivera\",\n    \"phone\": \"3001234567\",\n    \"legalId\": \"1234567890\",\n    \"legalIdType\": \"CC\"\n  },\n  \"delivery\": {\n    \"addressLine1\": \"Cra 7 #32-16\",\n    \"city\": \"Bogotá\",\n    \"region\": \"Cundinamarca\",\n    \"country\": \"CO\",\n    \"phone\": \"3001234567\",\n    \"recipientName\": \"Ana Rivera\"\n  }\n}"
+        },
+        "url": "{{baseUrl}}/api/checkout/transactions"
+      }
+    },
+    {
+      "name": "Pay transaction",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"cardToken\": \"tok_test\",\n  \"installments\": 1,\n  \"acceptanceToken\": \"acc\",\n  \"acceptPersonalAuth\": \"auth\",\n  \"cardBrand\": \"visa\",\n  \"cardLast4\": \"4242\"\n}"
+        },
+        "url": "{{baseUrl}}/api/checkout/transactions/{{reference}}/pay"
+      }
+    },
+    {
+      "name": "Get transaction",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/transactions/{{reference}}"
+      }
+    },
+    {
+      "name": "Get delivery",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/deliveries/{{reference}}"
+      }
+    },
+    {
+      "name": "Patch delivery",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"city\": \"Medellín\"\n}"
+        },
+        "url": "{{baseUrl}}/api/deliveries/{{reference}}"
+      }
+    }
+  ]
+}

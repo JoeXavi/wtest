@@ -1,0 +1,19 @@
+services:
+  dynamodb:
+    image: amazon/dynamodb-local:2.5.2
+    command: '-jar DynamoDBLocal.jar -sharedDb -inMemory'
+    ports:
+      - '8000:8000'
+    working_dir: /home/dynamodblocal
+
+  dynamodb-admin:
+    image: aaronshaf/dynamodb-admin:4.6.1
+    ports:
+      - '8001:8001'
+    environment:
+      DYNAMO_ENDPOINT: http://dynamodb:8000
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+    depends_on:
+      - dynamodb

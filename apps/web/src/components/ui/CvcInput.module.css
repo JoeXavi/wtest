@@ -1,0 +1,16 @@
+.input {
+  width: 100%;
+  min-height: var(--touch-min);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.input:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 0;
+  border-color: var(--color-primary);
+}
