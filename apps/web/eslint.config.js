@@ -29,5 +29,11 @@ export default [
       '@typescript-eslint/no-explicit-any': 'error',
     },
   },
+  {
+    files: ['src/test/**'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
   prettier,
 ];

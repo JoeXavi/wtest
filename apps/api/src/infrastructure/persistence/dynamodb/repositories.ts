@@ -7,7 +7,6 @@ import {
   PutCommand,
   QueryCommand,
   UpdateCommand,
-  DeleteCommand,
   TransactWriteCommand,
 } from '@aws-sdk/lib-dynamodb';
 import type {

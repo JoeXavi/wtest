@@ -1,5 +1,6 @@
+import { createHash } from 'crypto';
 import { ConfigService } from '@nestjs/config';
-import { domainErrorToHttp } from './result.mapper';
+import { domainErrorToHttp, matchResult } from './result.mapper';
 import { PspHttpAdapter } from '../psp/psp-http.adapter';
 
 describe('domainErrorToHttp', () => {
@@ -54,7 +55,6 @@ describe('domainErrorToHttp', () => {
 
 describe('matchResult', () => {
   it('writes success and error responses', () => {
-    const { matchResult } = require('./result.mapper') as typeof import('./result.mapper');
     const res = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn().mockReturnThis(),
@@ -84,7 +84,6 @@ describe('PspHttpAdapter.verifyEvent', () => {
       },
     } as unknown as ConfigService;
     const adapter = new PspHttpAdapter(config);
-    const { createHash } = require('crypto') as typeof import('crypto');
     const checksum = createHash('sha256')
       .update('tx-1APPROVED10001234secret')
       .digest('hex')
