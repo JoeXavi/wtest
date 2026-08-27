@@ -15,7 +15,7 @@
   <rect x="248" y="236" width="624" height="348" rx="8" fill="url(#screen)"/>
   <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22" fill="#E7EFE8">
     <text x="280" y="290">const hours = await book();</text>
-    <text x="280" y="330" fill="#A8D5C0">// pair · ship · repeat</text>
+    <text x="280" y="330" fill="#A8D5C0">// pair &#183; ship &#183; repeat</text>
     <text x="280" y="380">return &lt;Norte /&gt;;</text>
   </g>
   <rect x="420" y="630" width="280" height="18" rx="4" fill="#2A2522"/>

@@ -3,7 +3,7 @@ export const copy = {
   productName: 'JoeXavi Dev Hours',
   productDescription:
     'Senior full-stack pairing time. Ship features, untangle architecture, and leave with clearer next steps.',
-  usdPrice: 'USD 20 / hour',
+  usdPrice: 'Best FullStack developer',
   copHelper: 'COP 50.000 billed per hour',
   hoursLabel: 'Hours',
   hoursAvailable: (n: number) => `${n} hours available`,

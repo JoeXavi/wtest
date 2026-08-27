@@ -34,7 +34,7 @@ async function main(): Promise<void> {
         productId: PRODUCT_ID,
         name: 'JoeXavi Dev Hours',
         description:
-          'Senior full-stack pairing time. Architecture, delivery, and hands-on implementation.',
+          'Senior full-stack pairing time. Architecture, delivery, and hands-on implementation. Even better with AI assistance.',
         unit: 'HOUR',
         unitPriceCents: 5_000_000,
         currency: 'COP',
