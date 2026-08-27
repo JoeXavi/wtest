@@ -4,6 +4,7 @@ import { PayTransactionUseCase } from './pay-transaction.use-case';
 import { CancelCheckoutUseCase } from './cancel-checkout.use-case';
 import { HandlePaymentEventUseCase, SyncTransactionStatusUseCase } from './sync-transaction.use-case';
 import { ListProductsUseCase } from './list-products.use-case';
+import { err } from '../../shared/result';
 import {
   FakePaymentGateway,
   FixedClock,
@@ -76,6 +77,13 @@ describe('Checkout use cases', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value[0]?.available).toBe(96);
+  });
+
+  it('propagates product list failures', async () => {
+    const { list, products } = build();
+    products.list = async () => err({ code: 'PRODUCT_NOT_FOUND', productId: 'x' });
+    const result = await list.execute();
+    expect(result.ok).toBe(false);
   });
 
   it('starts checkout and reserves stock', async () => {

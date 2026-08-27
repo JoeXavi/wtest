@@ -1,6 +1,7 @@
 import { createHash } from 'crypto';
+import { HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { domainErrorToHttp, matchResult } from './result.mapper';
+import { domainErrorToHttp, GlobalExceptionFilter, matchResult } from './result.mapper';
 import { PspHttpAdapter } from '../psp/psp-http.adapter';
 
 describe('domainErrorToHttp', () => {
@@ -50,6 +51,7 @@ describe('domainErrorToHttp', () => {
       }).status,
     ).toBe(409);
     expect(domainErrorToHttp({ code: 'PSP_UNAVAILABLE', message: 'down' }).status).toBe(502);
+    expect(domainErrorToHttp({ code: 'UNEXPECTED' as never }).status).toBe(500);
   });
 });
 
@@ -66,6 +68,50 @@ describe('matchResult', () => {
       res as never,
     );
     expect(res.status).toHaveBeenCalledWith(404);
+  });
+});
+
+describe('GlobalExceptionFilter', () => {
+  function mockHost(headers: Record<string, string> = {}) {
+    const response = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn().mockReturnThis(),
+    };
+    return {
+      response,
+      host: {
+        switchToHttp: () => ({
+          getResponse: () => response,
+          getRequest: () => ({ headers }),
+        }),
+      } as never,
+    };
+  }
+
+  it('maps HttpException bodies and unknown errors', () => {
+    const filter = new GlobalExceptionFilter();
+    jest.spyOn(filter['logger'], 'error').mockImplementation();
+
+    const stringBody = mockHost({ 'x-request-id': 'req-1' });
+    filter.catch(new HttpException('nope', HttpStatus.BAD_REQUEST), stringBody.host);
+    expect(stringBody.response.status).toHaveBeenCalledWith(400);
+    expect(stringBody.response.json).toHaveBeenCalledWith({
+      message: 'nope',
+      correlationId: 'req-1',
+    });
+
+    const objectBody = mockHost({ 'x-correlation-id': 'corr-1' });
+    filter.catch(new HttpException({ error: 'missing' }, HttpStatus.NOT_FOUND), objectBody.host);
+    expect(objectBody.response.status).toHaveBeenCalledWith(404);
+
+    const unknown = mockHost();
+    filter.catch(new Error('boom'), unknown.host);
+    expect(unknown.response.status).toHaveBeenCalledWith(500);
+    expect(unknown.response.json).toHaveBeenCalledWith({
+      code: 'INTERNAL_ERROR',
+      message: 'Unexpected error',
+      correlationId: 'unknown',
+    });
   });
 });
 

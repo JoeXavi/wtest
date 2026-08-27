@@ -21,6 +21,13 @@ function reduce(
   return checkoutReducer(state, action);
 }
 
+function makeStore(checkout: CheckoutState) {
+  return configureStore({
+    reducer: { checkout: checkoutReducer },
+    preloadedState: { checkout },
+  });
+}
+
 describe('checkout reducer transitions', () => {
   it('product → details via openDetails', () => {
     let state = reduce(undefined, { type: '@@init' });
@@ -198,36 +205,31 @@ describe('checkout reducer transitions', () => {
 
 describe('payCheckout double-tap guard', () => {
   it('condition blocks when already submitting', async () => {
-    const store = configureStore({
-      reducer: { checkout: checkoutReducer },
-      preloadedState: {
-        checkout: {
-          ...initialCheckoutState,
-          step: 'summary' as const,
-          pspSession: {
-            publicKey: 'pub',
-            acceptanceToken: 't1',
-            acceptPersonalAuthToken: 't2',
-            policyLinks: {
-              endUserPolicy: 'https://example.com/p',
-              personalDataAuth: 'https://example.com/d',
-            },
-          },
-          acceptance: { termsAccepted: true, dataAccepted: true },
-          transaction: {
-            id: 'NOR-1',
-            reference: 'NOR-1',
-            status: 'PENDING' as const,
-            breakdown: {
-              itemCents: 5_000_000,
-              baseFeeCents: 150_000,
-              deliveryFeeCents: 800_000,
-              totalCents: 5_950_000,
-            },
-          },
-          ui: { ...initialCheckoutState.ui, submitting: true },
+    const store = makeStore({
+      ...initialCheckoutState,
+      step: 'summary',
+      pspSession: {
+        publicKey: 'pub',
+        acceptanceToken: 't1',
+        acceptPersonalAuthToken: 't2',
+        policyLinks: {
+          endUserPolicy: 'https://example.com/p',
+          personalDataAuth: 'https://example.com/d',
         },
       },
+      acceptance: { termsAccepted: true, dataAccepted: true },
+      transaction: {
+        id: 'NOR-1',
+        reference: 'NOR-1',
+        status: 'PENDING',
+        breakdown: {
+          itemCents: 5_000_000,
+          baseFeeCents: 150_000,
+          deliveryFeeCents: 800_000,
+          totalCents: 5_950_000,
+        },
+      },
+      ui: { ...initialCheckoutState.ui, submitting: true },
     });
 
     const result = await store.dispatch(payCheckout('key-1'));
@@ -240,29 +242,24 @@ describe('payCheckout double-tap guard', () => {
 
 describe('createCheckoutTransaction double-dispatch guard', () => {
   it('condition blocks when already submitting', async () => {
-    const store = configureStore({
-      reducer: { checkout: checkoutReducer },
-      preloadedState: {
-        checkout: {
-          ...initialCheckoutState,
-          productId: 'prod_1',
-          hours: 1,
-          customer: {
-            email: 'a@b.co',
-            fullName: 'Ada',
-            phone: '+573001112233',
-            legalId: '123',
-            legalIdType: 'CC',
-          },
-          delivery: {
-            addressLine1: 'Calle 1 #2-3',
-            city: 'Bogota',
-            region: 'Cund',
-            country: 'CO',
-          },
-          ui: { ...initialCheckoutState.ui, submitting: true },
-        },
+    const store = makeStore({
+      ...initialCheckoutState,
+      productId: 'prod_1',
+      hours: 1,
+      customer: {
+        email: 'a@b.co',
+        fullName: 'Ada',
+        phone: '+573001112233',
+        legalId: '123',
+        legalIdType: 'CC',
       },
+      delivery: {
+        addressLine1: 'Calle 1 #2-3',
+        city: 'Bogota',
+        region: 'Cund',
+        country: 'CO',
+      },
+      ui: { ...initialCheckoutState.ui, submitting: true },
     });
 
     const result = await store.dispatch(createCheckoutTransaction());
@@ -275,37 +272,32 @@ describe('createCheckoutTransaction double-dispatch guard', () => {
   });
 
   it('condition blocks when a transaction already exists', async () => {
-    const store = configureStore({
-      reducer: { checkout: checkoutReducer },
-      preloadedState: {
-        checkout: {
-          ...initialCheckoutState,
-          productId: 'prod_1',
-          hours: 1,
-          customer: {
-            email: 'a@b.co',
-            fullName: 'Ada',
-            phone: '+573001112233',
-            legalId: '123',
-            legalIdType: 'CC',
-          },
-          delivery: {
-            addressLine1: 'Calle 1 #2-3',
-            city: 'Bogota',
-            region: 'Cund',
-            country: 'CO',
-          },
-          transaction: {
-            id: 'NOR-1',
-            reference: 'NOR-1',
-            status: 'PENDING',
-            breakdown: {
-              itemCents: 5_000_000,
-              baseFeeCents: 150_000,
-              deliveryFeeCents: 800_000,
-              totalCents: 5_950_000,
-            },
-          },
+    const store = makeStore({
+      ...initialCheckoutState,
+      productId: 'prod_1',
+      hours: 1,
+      customer: {
+        email: 'a@b.co',
+        fullName: 'Ada',
+        phone: '+573001112233',
+        legalId: '123',
+        legalIdType: 'CC',
+      },
+      delivery: {
+        addressLine1: 'Calle 1 #2-3',
+        city: 'Bogota',
+        region: 'Cund',
+        country: 'CO',
+      },
+      transaction: {
+        id: 'NOR-1',
+        reference: 'NOR-1',
+        status: 'PENDING',
+        breakdown: {
+          itemCents: 5_000_000,
+          baseFeeCents: 150_000,
+          deliveryFeeCents: 800_000,
+          totalCents: 5_950_000,
         },
       },
     });

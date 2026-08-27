@@ -80,7 +80,9 @@ describe('Env validation', () => {
 describe('Result and money helpers', () => {
   it('maps and collects results', () => {
     expect(map({ ok: true, value: 2 }, (n) => n * 2)).toEqual({ ok: true, value: 4 });
+    expect(map({ ok: false, error: 'x' }, (n: number) => n * 2)).toEqual({ ok: false, error: 'x' });
     expect(mapErr({ ok: false, error: 'x' }, (e) => e + e)).toEqual({ ok: false, error: 'xx' });
+    expect(mapErr({ ok: true, value: 1 }, (e: string) => e)).toEqual({ ok: true, value: 1 });
     expect(all([{ ok: true, value: 1 }, { ok: true, value: 2 }])).toEqual({
       ok: true,
       value: [1, 2],
@@ -101,6 +103,9 @@ describe('Result and money helpers', () => {
     expect(a.ok && b.ok).toBe(true);
     if (!a.ok || !b.ok) return;
     expect(addMoney(a.value, b.value)).toEqual({ ok: true, value: { cents: 150, currency: 'COP' } });
+    expect(
+      addMoney(a.value, { cents: 50, currency: 'USD' as 'COP' }).ok,
+    ).toBe(false);
     expect(formatCop(15_950_000)).toContain('159.500');
   });
 });

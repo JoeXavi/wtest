@@ -2,7 +2,7 @@ import { available, commitSale, releaseReservation, reserve } from './product';
 import { attachPspId, finalize, quoteAmounts } from './transaction';
 import { detectCardBrand, luhnValid } from './value-objects';
 import { money, multiplyMoney } from '../shared/money';
-import { andThen, err, match, ok } from '../shared/result';
+import { andThen, andThenAsync, err, match, ok } from '../shared/result';
 import { sha256Hex } from '../infrastructure/psp/psp-http.adapter';
 import { seedProduct } from '../../test/fakes';
 
@@ -11,6 +11,11 @@ describe('Result', () => {
     const result = andThen(ok(2), (n: number) => (n > 0 ? ok(n * 3) : err('neg')));
     expect(result).toEqual(ok(6));
     expect(andThen(err('x'), () => ok(1))).toEqual(err('x'));
+  });
+
+  it('andThenAsync preserves errors without calling fn', async () => {
+    const result = await andThenAsync(err('x'), async () => ok(1));
+    expect(result).toEqual(err('x'));
   });
 
   it('matches both rails', () => {
@@ -24,6 +29,7 @@ describe('Money', () => {
     expect(money(1.5).ok).toBe(false);
     expect(money(-1).ok).toBe(false);
     expect(money(100).ok).toBe(true);
+    expect(money(100, 'USD' as 'COP').ok).toBe(false);
   });
 
   it('multiplies for hours quote', () => {
@@ -32,6 +38,8 @@ describe('Money', () => {
     if (!unit.ok) return;
     const total = multiplyMoney(unit.value, 3);
     expect(total).toEqual(ok({ cents: 15_000_000, currency: 'COP' }));
+    expect(multiplyMoney(unit.value, -1).ok).toBe(false);
+    expect(multiplyMoney(unit.value, 1.5).ok).toBe(false);
   });
 });
 
