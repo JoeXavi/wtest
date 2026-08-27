@@ -14,7 +14,7 @@ describe('createAppStore rehydration', () => {
     expect(store.getState().checkout.step).toBe('product');
   });
 
-  it('rehydrates PENDING transaction to result step', () => {
+  it('rehydrates pay-submitted PENDING to result step', () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
@@ -51,6 +51,65 @@ describe('createAppStore rehydration', () => {
     expect(store.getState().checkout.step).toBe('result');
     expect(store.getState().checkout.transaction?.status).toBe('PENDING');
     expect(store.getState().checkout.card?.token).toBe('tok');
+  });
+
+  it('rehydrates unpaid PENDING on summary with psp session', () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        savedAt: Date.now(),
+        checkout: {
+          step: 'summary',
+          hours: 1,
+          productId: 'prod_1',
+          customer: {
+            email: 'a@b.co',
+            fullName: 'Ada',
+            phone: '+573001112233',
+            legalId: '123',
+            legalIdType: 'CC',
+          },
+          delivery: {
+            addressLine1: 'Calle 1 #2-3',
+            city: 'Bogota',
+            region: 'Cund',
+            country: 'CO',
+          },
+          card: {
+            brand: 'visa',
+            last4: '4242',
+            token: 'tok',
+            tokenExpiresAt: Date.now() + 60_000,
+          },
+          transaction: {
+            id: 'NOR-1',
+            reference: 'NOR-1',
+            status: 'PENDING',
+            breakdown: {
+              itemCents: 5_000_000,
+              baseFeeCents: 150_000,
+              deliveryFeeCents: 800_000,
+              totalCents: 5_950_000,
+            },
+          },
+          acceptance: { termsAccepted: false, dataAccepted: false },
+          pspSession: {
+            publicKey: 'pub',
+            acceptanceToken: 't1',
+            acceptPersonalAuthToken: 't2',
+            policyLinks: {
+              endUserPolicy: 'https://example.com/p',
+              personalDataAuth: 'https://example.com/d',
+            },
+          },
+        },
+      }),
+    );
+    const store = createAppStore();
+    expect(store.getState().checkout.step).toBe('summary');
+    expect(store.getState().checkout.transaction?.status).toBe('PENDING');
+    expect(store.getState().checkout.pspSession?.acceptanceToken).toBe('t1');
   });
 
   it('accepts explicit preloaded checkout without reading storage', () => {

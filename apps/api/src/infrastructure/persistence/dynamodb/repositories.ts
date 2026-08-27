@@ -160,13 +160,20 @@ export class DynamoTransactionRepository implements TransactionRepository {
         Update: {
           TableName: this.table(),
           Key: productKey,
-          UpdateExpression: 'SET reserved = reserved + :q, updatedAt = :now',
+          UpdateExpression: 'SET #reserved = #reserved + :q, updatedAt = :now',
           ConditionExpression:
-            'attribute_exists(PK) AND active = :true AND stock - reserved >= :q',
+            'attribute_exists(PK) AND #active = :true AND #reserved = :expectedReserved AND #stock >= :minStock',
+          ExpressionAttributeNames: {
+            '#active': 'active',
+            '#reserved': 'reserved',
+            '#stock': 'stock',
+          },
           ExpressionAttributeValues: {
             ':q': write.quantity,
             ':now': now,
             ':true': true,
+            ':expectedReserved': write.expectedReserved,
+            ':minStock': write.expectedReserved + write.quantity,
           },
         },
       },
@@ -281,66 +288,128 @@ export class DynamoTransactionRepository implements TransactionRepository {
     }
 
     const now = new Date().toISOString();
+    const productKey = {
+      PK: `PRODUCT#${tx.productId}`,
+      SK: `PRODUCT#${tx.productId}`,
+    };
+    const reservationKey = {
+      PK: `PRODUCT#${tx.productId}`,
+      SK: `RESERVATION#${reference}`,
+    };
+
+    const reservation = await this.db.send(
+      new GetCommand({
+        TableName: this.table(),
+        Key: reservationKey,
+      }),
+    );
+    const hasReservation = Boolean(reservation.Item);
+
     try {
-      await this.db.send(
-        new TransactWriteCommand({
-          TransactItems: [
-            {
-              Update: {
-                TableName: this.table(),
-                Key: {
-                  PK: `PRODUCT#${tx.productId}`,
-                  SK: `PRODUCT#${tx.productId}`,
-                },
-                UpdateExpression:
-                  'SET stock = stock - :q, reserved = reserved - :q, updatedAt = :now',
-                ConditionExpression: 'reserved >= :q AND stock >= :q',
-                ExpressionAttributeValues: { ':q': tx.quantity, ':now': now },
-              },
-            },
-            {
-              Update: {
-                TableName: this.table(),
-                Key: { PK: `TX#${reference}`, SK: `TX#${reference}` },
-                UpdateExpression:
-                  'SET #status = :approved, finalizedAt = :now, updatedAt = :now, statusMessage = :msg REMOVE GSI1PK, GSI1SK',
-                ConditionExpression: '#status = :pending',
-                ExpressionAttributeNames: { '#status': 'status' },
-                ExpressionAttributeValues: {
-                  ':approved': 'APPROVED',
-                  ':pending': 'PENDING',
-                  ':now': now,
-                  ':msg': statusMessage ?? null,
+      if (hasReservation) {
+        await this.db.send(
+          new TransactWriteCommand({
+            TransactItems: [
+              {
+                Update: {
+                  TableName: this.table(),
+                  Key: productKey,
+                  UpdateExpression:
+                    'SET stock = stock - :q, reserved = reserved - :q, updatedAt = :now',
+                  ConditionExpression: 'reserved >= :q AND stock >= :q',
+                  ExpressionAttributeValues: { ':q': tx.quantity, ':now': now },
                 },
               },
-            },
-            {
-              Delete: {
-                TableName: this.table(),
-                Key: {
-                  PK: `PRODUCT#${tx.productId}`,
-                  SK: `RESERVATION#${reference}`,
+              {
+                Update: {
+                  TableName: this.table(),
+                  Key: { PK: `TX#${reference}`, SK: `TX#${reference}` },
+                  UpdateExpression:
+                    'SET #status = :approved, finalizedAt = :now, updatedAt = :now, statusMessage = :msg REMOVE GSI1PK, GSI1SK',
+                  ConditionExpression: '#status = :pending',
+                  ExpressionAttributeNames: { '#status': 'status' },
+                  ExpressionAttributeValues: {
+                    ':approved': 'APPROVED',
+                    ':pending': 'PENDING',
+                    ':now': now,
+                    ':msg': statusMessage ?? null,
+                  },
                 },
               },
-            },
-            {
-              Update: {
-                TableName: this.table(),
-                Key: { PK: `TX#${reference}`, SK: `DELIVERY#${reference}` },
-                UpdateExpression:
-                  'SET #status = :assigned, assignedProductId = :pid, assignedQuantity = :q, assignedAt = :now, updatedAt = :now',
-                ExpressionAttributeNames: { '#status': 'status' },
-                ExpressionAttributeValues: {
-                  ':assigned': 'ASSIGNED',
-                  ':pid': tx.productId,
-                  ':q': tx.quantity,
-                  ':now': now,
+              {
+                Delete: {
+                  TableName: this.table(),
+                  Key: reservationKey,
                 },
               },
-            },
-          ],
-        }),
-      );
+              {
+                Update: {
+                  TableName: this.table(),
+                  Key: { PK: `TX#${reference}`, SK: `DELIVERY#${reference}` },
+                  UpdateExpression:
+                    'SET #status = :assigned, assignedProductId = :pid, assignedQuantity = :q, assignedAt = :now, updatedAt = :now',
+                  ExpressionAttributeNames: { '#status': 'status' },
+                  ExpressionAttributeValues: {
+                    ':assigned': 'ASSIGNED',
+                    ':pid': tx.productId,
+                    ':q': tx.quantity,
+                    ':now': now,
+                  },
+                },
+              },
+            ],
+          }),
+        );
+      } else {
+        // Reservation already cleared (e.g. restock / expired sweep) but PSP approved.
+        // Still mark the sale: decrement stock only, keep reserved untouched.
+        await this.db.send(
+          new TransactWriteCommand({
+            TransactItems: [
+              {
+                Update: {
+                  TableName: this.table(),
+                  Key: productKey,
+                  UpdateExpression: 'SET stock = stock - :q, updatedAt = :now',
+                  ConditionExpression: 'stock >= :q',
+                  ExpressionAttributeValues: { ':q': tx.quantity, ':now': now },
+                },
+              },
+              {
+                Update: {
+                  TableName: this.table(),
+                  Key: { PK: `TX#${reference}`, SK: `TX#${reference}` },
+                  UpdateExpression:
+                    'SET #status = :approved, finalizedAt = :now, updatedAt = :now, statusMessage = :msg REMOVE GSI1PK, GSI1SK',
+                  ConditionExpression: '#status = :pending',
+                  ExpressionAttributeNames: { '#status': 'status' },
+                  ExpressionAttributeValues: {
+                    ':approved': 'APPROVED',
+                    ':pending': 'PENDING',
+                    ':now': now,
+                    ':msg': statusMessage ?? null,
+                  },
+                },
+              },
+              {
+                Update: {
+                  TableName: this.table(),
+                  Key: { PK: `TX#${reference}`, SK: `DELIVERY#${reference}` },
+                  UpdateExpression:
+                    'SET #status = :assigned, assignedProductId = :pid, assignedQuantity = :q, assignedAt = :now, updatedAt = :now',
+                  ExpressionAttributeNames: { '#status': 'status' },
+                  ExpressionAttributeValues: {
+                    ':assigned': 'ASSIGNED',
+                    ':pid': tx.productId,
+                    ':q': tx.quantity,
+                    ':now': now,
+                  },
+                },
+              },
+            ],
+          }),
+        );
+      }
       return this.findByReference(reference);
     } catch (error: unknown) {
       if (isConditionalFailed(error) || isTransactionCanceled(error)) {
@@ -375,62 +444,109 @@ export class DynamoTransactionRepository implements TransactionRepository {
     }
 
     const now = new Date().toISOString();
+    const productKey = {
+      PK: `PRODUCT#${tx.productId}`,
+      SK: `PRODUCT#${tx.productId}`,
+    };
+    const reservationKey = {
+      PK: `PRODUCT#${tx.productId}`,
+      SK: `RESERVATION#${reference}`,
+    };
+    const reservation = await this.db.send(
+      new GetCommand({
+        TableName: this.table(),
+        Key: reservationKey,
+      }),
+    );
+    const hasReservation = Boolean(reservation.Item);
+
     try {
-      await this.db.send(
-        new TransactWriteCommand({
-          TransactItems: [
-            {
-              Update: {
-                TableName: this.table(),
-                Key: {
-                  PK: `PRODUCT#${tx.productId}`,
-                  SK: `PRODUCT#${tx.productId}`,
-                },
-                UpdateExpression: 'SET reserved = reserved - :q, updatedAt = :now',
-                ConditionExpression: 'reserved >= :q',
-                ExpressionAttributeValues: { ':q': tx.quantity, ':now': now },
-              },
-            },
-            {
-              Update: {
-                TableName: this.table(),
-                Key: { PK: `TX#${reference}`, SK: `TX#${reference}` },
-                UpdateExpression:
-                  'SET #status = :status, finalizedAt = :now, updatedAt = :now, statusMessage = :msg REMOVE GSI1PK, GSI1SK',
-                ConditionExpression: '#status = :pending',
-                ExpressionAttributeNames: { '#status': 'status' },
-                ExpressionAttributeValues: {
-                  ':status': status,
-                  ':pending': 'PENDING',
-                  ':now': now,
-                  ':msg': statusMessage ?? null,
+      if (hasReservation) {
+        await this.db.send(
+          new TransactWriteCommand({
+            TransactItems: [
+              {
+                Update: {
+                  TableName: this.table(),
+                  Key: productKey,
+                  UpdateExpression: 'SET reserved = reserved - :q, updatedAt = :now',
+                  ConditionExpression: 'reserved >= :q',
+                  ExpressionAttributeValues: { ':q': tx.quantity, ':now': now },
                 },
               },
-            },
-            {
-              Delete: {
-                TableName: this.table(),
-                Key: {
-                  PK: `PRODUCT#${tx.productId}`,
-                  SK: `RESERVATION#${reference}`,
+              {
+                Update: {
+                  TableName: this.table(),
+                  Key: { PK: `TX#${reference}`, SK: `TX#${reference}` },
+                  UpdateExpression:
+                    'SET #status = :status, finalizedAt = :now, updatedAt = :now, statusMessage = :msg REMOVE GSI1PK, GSI1SK',
+                  ConditionExpression: '#status = :pending',
+                  ExpressionAttributeNames: { '#status': 'status' },
+                  ExpressionAttributeValues: {
+                    ':status': status,
+                    ':pending': 'PENDING',
+                    ':now': now,
+                    ':msg': statusMessage ?? null,
+                  },
                 },
               },
-            },
-            {
-              Update: {
-                TableName: this.table(),
-                Key: { PK: `TX#${reference}`, SK: `DELIVERY#${reference}` },
-                UpdateExpression: 'SET #status = :cancelled, updatedAt = :now',
-                ExpressionAttributeNames: { '#status': 'status' },
-                ExpressionAttributeValues: {
-                  ':cancelled': 'CANCELLED',
-                  ':now': now,
+              {
+                Delete: {
+                  TableName: this.table(),
+                  Key: reservationKey,
                 },
               },
-            },
-          ],
-        }),
-      );
+              {
+                Update: {
+                  TableName: this.table(),
+                  Key: { PK: `TX#${reference}`, SK: `DELIVERY#${reference}` },
+                  UpdateExpression: 'SET #status = :cancelled, updatedAt = :now',
+                  ExpressionAttributeNames: { '#status': 'status' },
+                  ExpressionAttributeValues: {
+                    ':cancelled': 'CANCELLED',
+                    ':now': now,
+                  },
+                },
+              },
+            ],
+          }),
+        );
+      } else {
+        await this.db.send(
+          new TransactWriteCommand({
+            TransactItems: [
+              {
+                Update: {
+                  TableName: this.table(),
+                  Key: { PK: `TX#${reference}`, SK: `TX#${reference}` },
+                  UpdateExpression:
+                    'SET #status = :status, finalizedAt = :now, updatedAt = :now, statusMessage = :msg REMOVE GSI1PK, GSI1SK',
+                  ConditionExpression: '#status = :pending',
+                  ExpressionAttributeNames: { '#status': 'status' },
+                  ExpressionAttributeValues: {
+                    ':status': status,
+                    ':pending': 'PENDING',
+                    ':now': now,
+                    ':msg': statusMessage ?? null,
+                  },
+                },
+              },
+              {
+                Update: {
+                  TableName: this.table(),
+                  Key: { PK: `TX#${reference}`, SK: `DELIVERY#${reference}` },
+                  UpdateExpression: 'SET #status = :cancelled, updatedAt = :now',
+                  ExpressionAttributeNames: { '#status': 'status' },
+                  ExpressionAttributeValues: {
+                    ':cancelled': 'CANCELLED',
+                    ':now': now,
+                  },
+                },
+              },
+            ],
+          }),
+        );
+      }
       return this.findByReference(reference);
     } catch (error: unknown) {
       if (isConditionalFailed(error) || isTransactionCanceled(error)) {

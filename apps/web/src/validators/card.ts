@@ -85,10 +85,18 @@ export function last4(pan: string): string {
   return digits.slice(-4);
 }
 
+const PERSON_NAME_PATTERN = /^[A-Za-zÀ-ÿ\s]+$/;
+
 export function isCardholderValid(name: string): boolean {
   const trimmed = name.trim();
+  if (trimmed.length < 5 || trimmed.length > 60) return false;
+  return PERSON_NAME_PATTERN.test(trimmed);
+}
+
+export function isPersonNameValid(name: string): boolean {
+  const trimmed = name.trim();
   if (trimmed.length < 2 || trimmed.length > 60) return false;
-  return /^[A-Za-zÀ-ÿ\s]+$/.test(trimmed);
+  return PERSON_NAME_PATTERN.test(trimmed);
 }
 
 export function isEmailValid(email: string): boolean {

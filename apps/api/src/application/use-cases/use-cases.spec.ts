@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { StartCheckoutUseCase } from './start-checkout.use-case';
 import { PayTransactionUseCase } from './pay-transaction.use-case';
+import { CancelCheckoutUseCase } from './cancel-checkout.use-case';
 import { HandlePaymentEventUseCase, SyncTransactionStatusUseCase } from './sync-transaction.use-case';
 import { ListProductsUseCase } from './list-products.use-case';
 import {
@@ -41,10 +42,11 @@ function build() {
     config,
   );
   const pay = new PayTransactionUseCase(transactions, customers, deliveries, payments);
+  const cancel = new CancelCheckoutUseCase(transactions);
   const sync = new SyncTransactionStatusUseCase(transactions, payments);
   const handle = new HandlePaymentEventUseCase(transactions, payments);
   const list = new ListProductsUseCase(products);
-  return { products, transactions, payments, start, pay, sync, handle, list };
+  return { products, transactions, payments, start, pay, cancel, sync, handle, list };
 }
 
 const checkoutCmd = {
@@ -73,7 +75,7 @@ describe('Checkout use cases', () => {
     const result = await list.execute();
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value[0]?.available).toBe(48);
+    expect(result.value[0]?.available).toBe(96);
   });
 
   it('starts checkout and reserves stock', async () => {
@@ -92,6 +94,20 @@ describe('Checkout use cases', () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.code).toBe('INSUFFICIENT_STOCK');
+  });
+
+  it('cancels unpaid checkout and releases stock', async () => {
+    const { start, cancel, products } = build();
+    const started = await start.execute(checkoutCmd);
+    expect(started.ok).toBe(true);
+    if (!started.ok) return;
+
+    const cancelled = await cancel.execute(started.value.transactionReference);
+    expect(cancelled.ok).toBe(true);
+    if (!cancelled.ok) return;
+    expect(cancelled.value.status).toBe('VOIDED');
+    expect(products.products.get('prod-1')?.reserved).toBe(0);
+    expect(products.products.get('prod-1')?.stock).toBe(96);
   });
 
   it('pays and finalizes approved via sync', async () => {
@@ -121,7 +137,7 @@ describe('Checkout use cases', () => {
     expect(synced.ok).toBe(true);
     if (!synced.ok) return;
     expect(synced.value.status).toBe('APPROVED');
-    expect(products.products.get('prod-1')?.stock).toBe(45);
+    expect(products.products.get('prod-1')?.stock).toBe(93);
     expect(products.products.get('prod-1')?.reserved).toBe(0);
   });
 
@@ -156,7 +172,7 @@ describe('Checkout use cases', () => {
       timestamp: 1,
     });
     expect(event.ok).toBe(true);
-    expect(products.products.get('prod-1')?.stock).toBe(48);
+    expect(products.products.get('prod-1')?.stock).toBe(96);
     expect(products.products.get('prod-1')?.reserved).toBe(0);
   });
 

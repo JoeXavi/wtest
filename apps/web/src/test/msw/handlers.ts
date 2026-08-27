@@ -141,6 +141,22 @@ export const handlers = [
     );
   }),
 
+  rest.post(`${API}/checkout/transactions/:ref/cancel`, (_req, res, ctx) => {
+    currentStatus = 'VOIDED';
+    return res(
+      ctx.json({
+        transactionReference: 'NOR-TESTREF001',
+        status: 'VOIDED',
+        amounts: {
+          itemCents: 15_000_000,
+          baseFeeCents: 150_000,
+          deliveryFeeCents: 800_000,
+          totalCents: 15_950_000,
+        },
+      }),
+    );
+  }),
+
   rest.get(`${API}/transactions/:ref`, (_req, res, ctx) => {
     if (currentStatus === 'PENDING') {
       currentStatus = 'APPROVED';

@@ -34,7 +34,7 @@ export function ProductPage() {
   useEffect(() => {
     if (selected) {
       dispatch(setProductId(selected.productId));
-      const max = Math.min(selected.available, 48);
+      const max = Math.min(selected.available, 96);
       if (hours > max && max >= 1) {
         dispatch(selectHours(max));
       }
@@ -42,7 +42,7 @@ export function ProductPage() {
   }, [selected, dispatch, hours]);
 
   const available = selected?.available ?? 0;
-  const maxHours = Math.min(available, 48);
+  const maxHours = Math.min(available, 96);
   const soldOut = available <= 0;
 
   const onPay = () => {

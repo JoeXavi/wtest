@@ -5,6 +5,7 @@ import {
 } from '@reduxjs/toolkit';
 import type {
   AmountBreakdown,
+  CancelCheckoutResponse,
   CardBrand,
   CustomerInput,
   DeliveryInput,
@@ -51,7 +52,7 @@ export interface CheckoutTransaction {
   breakdown: AmountBreakdown;
 }
 
-/** Short-lived PSP acceptance tokens — never persisted. */
+/** PSP acceptance tokens — persisted only for unpaid summary checkouts. */
 export interface PspSession {
   publicKey: string;
   acceptanceToken: string;
@@ -166,10 +167,17 @@ export const createCheckoutTransaction = createAsyncThunk(
           message: err.message,
           status: err.status,
           body: err.body,
+          retryAfterMs: err.retryAfterMs,
         });
       }
       return rejectWithValue({ message: copy.networkError });
     }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { checkout } = getState() as { checkout: CheckoutState };
+      return !checkout.ui.submitting && !checkout.transaction;
+    },
   },
 );
 
@@ -247,9 +255,38 @@ export const pollTransaction = createAsyncThunk(
     try {
       return await api.getTransaction(reference);
     } catch (err) {
-      const message =
-        err instanceof HttpError ? err.message : copy.networkError;
-      return rejectWithValue(message);
+      if (err instanceof HttpError) {
+        return rejectWithValue({
+          message: err.message,
+          status: err.status,
+          retryAfterMs: err.retryAfterMs,
+        });
+      }
+      return rejectWithValue({ message: copy.networkError });
+    }
+  },
+);
+
+export const cancelCheckout = createAsyncThunk(
+  'checkout/cancel',
+  async (_, { getState, rejectWithValue }) => {
+    const state = getState() as { checkout: CheckoutState };
+    const { transaction } = state.checkout;
+    if (!transaction) {
+      return rejectWithValue('Missing transaction');
+    }
+
+    try {
+      return await api.cancelCheckout(transaction.reference);
+    } catch (err) {
+      if (err instanceof HttpError) {
+        return rejectWithValue({
+          message: err.message,
+          status: err.status,
+          body: err.body,
+        });
+      }
+      return rejectWithValue({ message: copy.networkError });
     }
   },
 );
@@ -346,6 +383,7 @@ const checkoutSlice = createSlice({
         };
       })
       .addCase(createCheckoutTransaction.rejected, (state, action) => {
+        if (action.meta.condition) return;
         state.ui.submitting = false;
         const payload = action.payload as
           | { message?: string; status?: number; body?: { available?: number; code?: string } }
@@ -404,7 +442,50 @@ const checkoutSlice = createSlice({
       })
       .addCase(pollTransaction.rejected, (state, action) => {
         state.ui.polling = false;
-        state.ui.error = (action.payload as string) ?? copy.networkError;
+        const payload = action.payload as
+          | string
+          | { message?: string; status?: number }
+          | undefined;
+        if (typeof payload === 'string') {
+          state.ui.error = payload;
+        } else {
+          state.ui.error = payload?.message ?? copy.networkError;
+        }
+      })
+      .addCase(cancelCheckout.pending, (state) => {
+        state.ui.submitting = true;
+        state.ui.error = null;
+      })
+      .addCase(cancelCheckout.fulfilled, (state, action) => {
+        state.ui.submitting = false;
+        const res = action.payload as CancelCheckoutResponse;
+        if (state.transaction) {
+          state.transaction = {
+            ...state.transaction,
+            status: res.status,
+            statusMessage: res.statusMessage,
+            breakdown: res.amounts,
+          };
+        }
+        state.pspSession = null;
+        if (state.card) {
+          state.card = {
+            brand: state.card.brand,
+            last4: state.card.last4,
+            token: '',
+          };
+        }
+      })
+      .addCase(cancelCheckout.rejected, (state, action) => {
+        state.ui.submitting = false;
+        const payload = action.payload as
+          | { message?: string; status?: number }
+          | string
+          | undefined;
+        state.ui.error =
+          typeof payload === 'string'
+            ? payload
+            : (payload?.message ?? copy.networkError);
       });
   },
 });

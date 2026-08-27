@@ -3,6 +3,7 @@ import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { StartCheckoutUseCase } from '../../application/use-cases/start-checkout.use-case';
 import { PayTransactionUseCase } from '../../application/use-cases/pay-transaction.use-case';
+import { CancelCheckoutUseCase } from '../../application/use-cases/cancel-checkout.use-case';
 import { SyncTransactionStatusUseCase } from '../../application/use-cases/sync-transaction.use-case';
 import {
   GetCustomerUseCase,
@@ -18,6 +19,7 @@ export class CheckoutController {
   constructor(
     private readonly startCheckout: StartCheckoutUseCase,
     private readonly payTransaction: PayTransactionUseCase,
+    private readonly cancelCheckout: CancelCheckoutUseCase,
     private readonly syncTransaction: SyncTransactionStatusUseCase,
   ) {}
 
@@ -33,6 +35,14 @@ export class CheckoutController {
     @Res() res: Response,
   ): Promise<void> {
     matchResult(await this.payTransaction.execute(reference, body), res);
+  }
+
+  @Post('checkout/transactions/:reference/cancel')
+  async cancel(
+    @Param('reference') reference: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    matchResult(await this.cancelCheckout.execute(reference), res);
   }
 
   @Get('transactions/:reference')

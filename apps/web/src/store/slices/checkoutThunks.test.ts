@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import checkoutReducer, {
   tokenizeAndContinue,
   createCheckoutTransaction,
+  cancelCheckout,
   payCheckout,
   pollTransaction,
   initialCheckoutState,
@@ -296,5 +297,90 @@ describe('checkout thunk error rails', () => {
     });
     const result = await store.dispatch(createCheckoutTransaction());
     expect(createCheckoutTransaction.rejected.match(result)).toBe(true);
+  });
+
+  it('createCheckoutTransaction does not call the API twice while in flight', async () => {
+    let resolveCheckout!: (value: Awaited<ReturnType<typeof api.startCheckout>>) => void;
+    mockedApi.startCheckout.mockReturnValue(
+      new Promise((resolve) => {
+        resolveCheckout = resolve;
+      }),
+    );
+    const store = makeStore({
+      ...initialCheckoutState,
+      productId: 'prod_1',
+      hours: 1,
+      customer,
+      delivery,
+    });
+
+    const first = store.dispatch(createCheckoutTransaction());
+    const second = store.dispatch(createCheckoutTransaction());
+
+    expect(mockedApi.startCheckout).toHaveBeenCalledTimes(1);
+
+    const secondResult = await second;
+    expect(createCheckoutTransaction.rejected.match(secondResult)).toBe(true);
+    expect(
+      (secondResult as { meta: { condition?: boolean } }).meta.condition,
+    ).toBe(true);
+    expect(store.getState().checkout.ui.submitting).toBe(true);
+    expect(store.getState().checkout.ui.error).toBeNull();
+
+    resolveCheckout({
+      transactionReference: 'NOR-1',
+      status: 'PENDING',
+      amounts: {
+        itemCents: 5_000_000,
+        baseFeeCents: 150_000,
+        deliveryFeeCents: 800_000,
+        totalCents: 5_950_000,
+      },
+      currency: 'COP',
+      psp: {
+        publicKey: 'pub',
+        acceptanceToken: 't1',
+        acceptPersonalAuthToken: 't2',
+        policyLinks: {
+          endUserPolicy: 'https://example.com/p',
+          personalDataAuth: 'https://example.com/d',
+        },
+      },
+    });
+    await first;
+    expect(store.getState().checkout.transaction?.reference).toBe('NOR-1');
+  });
+
+  it('cancelCheckout voids a pending transaction', async () => {
+    mockedApi.cancelCheckout.mockResolvedValue({
+      transactionReference: 'NOR-1',
+      status: 'VOIDED',
+      amounts: {
+        itemCents: 5_000_000,
+        baseFeeCents: 150_000,
+        deliveryFeeCents: 800_000,
+        totalCents: 5_950_000,
+      },
+    });
+    const store = makeStore({
+      ...initialCheckoutState,
+      step: 'summary',
+      transaction: {
+        id: 'NOR-1',
+        reference: 'NOR-1',
+        status: 'PENDING',
+        breakdown: {
+          itemCents: 5_000_000,
+          baseFeeCents: 150_000,
+          deliveryFeeCents: 800_000,
+          totalCents: 5_950_000,
+        },
+      },
+    });
+    const result = await store.dispatch(cancelCheckout());
+    expect(cancelCheckout.fulfilled.match(result)).toBe(true);
+    expect(mockedApi.cancelCheckout).toHaveBeenCalledWith('NOR-1');
+    expect(store.getState().checkout.transaction?.status).toBe('VOIDED');
+    expect(store.getState().checkout.pspSession).toBeNull();
   });
 });

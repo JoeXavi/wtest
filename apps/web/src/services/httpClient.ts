@@ -1,10 +1,25 @@
 import { config } from '@/config';
 
+function parseRetryAfterMs(header: string | null): number | undefined {
+  if (!header) return undefined;
+  const seconds = Number(header);
+  if (!Number.isNaN(seconds) && seconds > 0) {
+    return seconds * 1000;
+  }
+  const dateMs = Date.parse(header);
+  if (!Number.isNaN(dateMs)) {
+    const delta = dateMs - Date.now();
+    return delta > 0 ? delta : undefined;
+  }
+  return undefined;
+}
+
 export class HttpError extends Error {
   constructor(
     message: string,
     readonly status: number,
     readonly body?: unknown,
+    readonly retryAfterMs?: number,
   ) {
     super(message);
     this.name = 'HttpError';
@@ -36,7 +51,12 @@ export async function httpClient<T>(
       typeof (data as { message: unknown }).message === 'string'
         ? (data as { message: string }).message
         : `Request failed (${response.status})`;
-    throw new HttpError(message, response.status, data);
+    throw new HttpError(
+      message,
+      response.status,
+      data,
+      parseRetryAfterMs(response.headers.get('Retry-After')),
+    );
   }
 
   return data as T;

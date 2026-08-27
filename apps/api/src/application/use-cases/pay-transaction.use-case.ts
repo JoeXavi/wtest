@@ -1,8 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { PayTransactionRequest, PayTransactionResponse } from '@norte/contracts';
 import {
   CUSTOMER_REPOSITORY,
   DELIVERY_REPOSITORY,
+  isTerminal,
   PAYMENT_GATEWAY,
   TRANSACTION_REPOSITORY,
   type CustomerRepository,
@@ -10,11 +11,13 @@ import {
   type PaymentGateway,
   type TransactionRepository,
 } from '../../domain';
-import { err, ok, type Result } from '../../shared/result';
+import { ok, type Result } from '../../shared/result';
 import type { DomainError } from '../../domain/errors';
 
 @Injectable()
 export class PayTransactionUseCase {
+  private readonly logger = new Logger(PayTransactionUseCase.name);
+
   constructor(
     @Inject(TRANSACTION_REPOSITORY) private readonly transactions: TransactionRepository,
     @Inject(CUSTOMER_REPOSITORY) private readonly customers: CustomerRepository,
@@ -31,11 +34,11 @@ export class PayTransactionUseCase {
     const tx = txResult.value;
 
     if (tx.status !== 'PENDING') {
-      return err({
-        code: 'INVALID_TRANSACTION_STATE',
-        reference,
-        current: tx.status,
-        attempted: 'pay',
+      return ok({
+        transactionReference: reference,
+        status: tx.status,
+        statusMessage: tx.statusMessage,
+        amounts: tx.amounts,
       });
     }
 
@@ -103,10 +106,32 @@ export class PayTransactionUseCase {
       return attached;
     }
 
+    let status = charge.value.status;
+    let statusMessage = charge.value.statusMessage;
+
+    if (isTerminal(status)) {
+      const finalized =
+        status === 'APPROVED'
+          ? await this.transactions.finalizeApproved(reference, statusMessage)
+          : await this.transactions.finalizeRejected(
+              reference,
+              status as 'DECLINED' | 'ERROR' | 'VOIDED',
+              statusMessage,
+            );
+      if (!finalized.ok) {
+        this.logger.warn(
+          `pay finalize failed reference=${reference} status=${status} error=${JSON.stringify(finalized.error)}`,
+        );
+      } else {
+        status = finalized.value.status;
+        statusMessage = finalized.value.statusMessage;
+      }
+    }
+
     return ok({
       transactionReference: reference,
-      status: charge.value.status,
-      statusMessage: charge.value.statusMessage,
+      status,
+      statusMessage,
       amounts: tx.amounts,
     });
   }

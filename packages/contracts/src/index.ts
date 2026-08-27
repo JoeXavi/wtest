@@ -101,6 +101,13 @@ export interface PayTransactionResponse {
   amounts: AmountBreakdown;
 }
 
+export interface CancelCheckoutResponse {
+  transactionReference: string;
+  status: TransactionStatus;
+  statusMessage?: string;
+  amounts: AmountBreakdown;
+}
+
 export interface TransactionDto {
   reference: string;
   status: TransactionStatus;

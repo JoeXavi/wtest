@@ -28,6 +28,7 @@ import {
   detectBrand,
   isAddressLine1Valid,
   isCardholderValid,
+  isPersonNameValid,
   isCityOrRegionValid,
   isCvcValid,
   isEmailValid,
@@ -144,9 +145,9 @@ export function CheckoutPage() {
         case 'email':
           return isEmailValid(email) ? undefined : copy.errors.email;
         case 'fullName':
-          return isCardholderValid(fullName)
+          return isPersonNameValid(fullName)
             ? undefined
-            : copy.errors.cardholder;
+            : copy.errors.fullName;
         case 'phone':
           return isPhoneValid(phone) ? undefined : copy.errors.phone;
         case 'legalId':

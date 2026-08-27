@@ -66,6 +66,14 @@ export class InMemoryTransactionRepository implements TransactionRepository {
         requested: write.quantity,
       });
     }
+    if (product.reserved !== write.expectedReserved) {
+      return err({
+        code: 'INSUFFICIENT_STOCK',
+        productId: write.productId,
+        available: available(product),
+        requested: write.quantity,
+      });
+    }
     if (this.transactions.has(write.transaction.reference)) {
       return err({ code: 'DUPLICATE_REFERENCE', reference: write.transaction.reference });
     }
@@ -123,10 +131,13 @@ export class InMemoryTransactionRepository implements TransactionRepository {
       });
     }
     const product = this.products.products.get(tx.productId)!;
+    const hasReservation = this.reservations.has(reference);
     product.stock -= tx.quantity;
-    product.reserved -= tx.quantity;
+    if (hasReservation) {
+      product.reserved -= tx.quantity;
+      this.reservations.delete(reference);
+    }
     this.products.products.set(product.productId, product);
-    this.reservations.delete(reference);
     const delivery = this.deliveries.get(reference)!;
     this.deliveries.set(reference, {
       ...delivery,
@@ -162,9 +173,11 @@ export class InMemoryTransactionRepository implements TransactionRepository {
       });
     }
     const product = this.products.products.get(tx.productId)!;
-    product.reserved -= tx.quantity;
-    this.products.products.set(product.productId, product);
-    this.reservations.delete(reference);
+    if (this.reservations.has(reference)) {
+      product.reserved -= tx.quantity;
+      this.reservations.delete(reference);
+      this.products.products.set(product.productId, product);
+    }
     const delivery = this.deliveries.get(reference)!;
     this.deliveries.set(reference, { ...delivery, status: 'CANCELLED' });
     const next = {
@@ -312,7 +325,7 @@ export function seedProduct(overrides: Partial<Product> = {}): Product {
     currency: 'COP',
     usdUnitPrice: 20,
     usdRateCop: 2500,
-    stock: 48,
+    stock: 96,
     reserved: 0,
     image: { key: '/img.svg', width: 1200, height: 750, alt: 'desk' },
     active: true,

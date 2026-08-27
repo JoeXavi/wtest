@@ -13,6 +13,7 @@
     "test:cov": "jest --coverage",
     "test:watch": "jest --watch",
     "seed": "ts-node -r tsconfig-paths/register src/scripts/seed.ts",
+    "restock": "ts-node -r tsconfig-paths/register src/scripts/restock.ts",
     "db:setup": "ts-node -r tsconfig-paths/register src/scripts/setup-table.ts"
   },
   "dependencies": {

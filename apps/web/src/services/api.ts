@@ -1,4 +1,5 @@
 import type {
+  CancelCheckoutResponse,
   PayTransactionRequest,
   PayTransactionResponse,
   ProductDto,
@@ -52,5 +53,14 @@ export function payTransaction(
 export function getTransaction(reference: string): Promise<TransactionDto> {
   return httpClient<TransactionDto>(
     `/transactions/${encodeURIComponent(reference)}`,
+  );
+}
+
+export function cancelCheckout(
+  reference: string,
+): Promise<CancelCheckoutResponse> {
+  return httpClient<CancelCheckoutResponse>(
+    `/checkout/transactions/${encodeURIComponent(reference)}/cancel`,
+    { method: 'POST' },
   );
 }

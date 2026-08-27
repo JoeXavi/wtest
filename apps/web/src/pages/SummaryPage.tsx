@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { copy } from '@/copy';
 import {
@@ -10,11 +10,20 @@ import {
 } from '@/components/ui';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
+  backToStore,
+  cancelCheckout,
   createCheckoutTransaction,
   payCheckout,
   setAcceptance,
   clearCheckoutError,
 } from '@/store/slices/checkoutSlice';
+import { fetchProducts, refreshStock } from '@/store/slices/productsSlice';
+import {
+  backoffDelayMs,
+  isRetryableRejectPayload,
+  MAX_RETRIES,
+  rejectRetryAfterMs,
+} from '@/services/retryPolicy';
 import styles from './SummaryPage.module.css';
 
 export function SummaryPage() {
@@ -25,6 +34,10 @@ export function SummaryPage() {
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const payKeyRef = useRef(`pay-${crypto.randomUUID()}`);
   const payingRef = useRef(false);
+  const attemptsRef = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startChainRef = useRef<(() => void) | null>(null);
+  const createStartedRef = useRef(false);
   const termsId = useId();
   const dataId = useId();
 
@@ -34,6 +47,7 @@ export function SummaryPage() {
     delivery,
     customer,
     transaction,
+    productId,
     pspSession,
     acceptance,
     ui,
@@ -55,22 +69,76 @@ export function SummaryPage() {
   }, [step, card, customer, delivery, navigate]);
 
   useEffect(() => {
-    if (!transaction && card && customer && delivery && !ui.submitting) {
-      void dispatch(createCheckoutTransaction()).then((result) => {
-        if (createCheckoutTransaction.rejected.match(result)) {
-          const payload = result.payload as
-            | { status?: number; body?: { available?: number; code?: string }; message?: string }
-            | undefined;
-          if (payload?.status === 409) {
-            const available = payload.body?.available ?? 0;
-            navigate('/', { replace: true });
-            // stock banner handled via error message on product if needed
-            void available;
-          }
-        }
-      });
+    if (transaction || !card || !customer || !delivery) {
+      return;
     }
-  }, [transaction, card, customer, delivery, ui.submitting, dispatch, navigate]);
+
+    let cancelled = false;
+
+    const scheduleRetry = (payload: unknown) => {
+      if (cancelled || attemptsRef.current >= MAX_RETRIES) return;
+      const delay = backoffDelayMs(
+        attemptsRef.current,
+        rejectRetryAfterMs(payload),
+      );
+      attemptsRef.current += 1;
+      timerRef.current = setTimeout(() => void tick(), delay);
+    };
+
+    const tick = async () => {
+      if (cancelled) return;
+
+      const result = await dispatch(createCheckoutTransaction());
+      if (cancelled) return;
+
+      if (createCheckoutTransaction.fulfilled.match(result)) {
+        return;
+      }
+
+      if (createCheckoutTransaction.rejected.match(result)) {
+        if (result.meta.condition) return;
+        const payload = result.payload as
+          | {
+              status?: number;
+              body?: { available?: number; code?: string };
+              message?: string;
+            }
+          | string
+          | undefined;
+
+        if (
+          payload &&
+          typeof payload === 'object' &&
+          payload.status === 409
+        ) {
+          navigate('/', { replace: true });
+          return;
+        }
+
+        if (isRetryableRejectPayload(payload)) {
+          scheduleRetry(payload);
+        }
+      }
+    };
+
+    const startChain = () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      attemptsRef.current = 0;
+      void tick();
+    };
+
+    startChainRef.current = startChain;
+    if (!createStartedRef.current) {
+      createStartedRef.current = true;
+      startChain();
+    }
+
+    return () => {
+      cancelled = true;
+      startChainRef.current = null;
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [transaction, card, customer, delivery, dispatch, navigate]);
 
   const onPay = async () => {
     if (payingRef.current || ui.submitting) return;
@@ -90,6 +158,27 @@ export function SummaryPage() {
     } catch {
       payingRef.current = false;
     }
+  };
+
+  const onRetryCreate = useCallback(() => {
+    dispatch(clearCheckoutError());
+    startChainRef.current?.();
+  }, [dispatch]);
+
+  const onCancel = async () => {
+    if (transaction?.status === 'PENDING') {
+      const result = await dispatch(cancelCheckout());
+      if (cancelCheckout.rejected.match(result)) {
+        return;
+      }
+    }
+    const pid = productId;
+    dispatch(backToStore());
+    if (pid) {
+      await dispatch(refreshStock(pid));
+    }
+    await dispatch(fetchProducts());
+    navigate('/');
   };
 
   const brandLabel =
@@ -113,13 +202,7 @@ export function SummaryPage() {
         }
       >
         {ui.error ? (
-          <ErrorBanner
-            message={ui.error}
-            onRetry={() => {
-              dispatch(clearCheckoutError());
-              void dispatch(createCheckoutTransaction());
-            }}
-          />
+          <ErrorBanner message={ui.error} onRetry={onRetryCreate} />
         ) : null}
 
         {!transaction ? (
@@ -230,9 +313,20 @@ export function SummaryPage() {
               >
                 {copy.payTotal(formatMoneyFromCents(transaction.breakdown.totalCents))}
               </Button>
+              <Button variant="ghost" fullWidth onClick={() => void onCancel()}>
+                {copy.cancelCheckout}
+              </Button>
             </div>
           </>
         )}
+
+        {!transaction ? (
+          <div className={styles.actions}>
+            <Button variant="ghost" fullWidth onClick={() => void onCancel()}>
+              {copy.cancelCheckout}
+            </Button>
+          </div>
+        ) : null}
       </Backdrop>
     </main>
   );

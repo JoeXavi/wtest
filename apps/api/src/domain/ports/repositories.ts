@@ -18,6 +18,7 @@ export const TRANSACTION_REPOSITORY = Symbol('TRANSACTION_REPOSITORY');
 export type StartCheckoutWrite = {
   productId: string;
   quantity: number;
+  expectedReserved: number;
   reservationExpiresAt: number;
   transaction: Transaction;
   delivery: Delivery;

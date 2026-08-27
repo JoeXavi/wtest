@@ -155,7 +155,7 @@ All three are enforced by DynamoDB, not by application sequencing.
 
 ### Reserve — `TransactWriteItems`
 
-1. `Update` product: `SET reserved = reserved + :qty` with `ConditionExpression: attribute_exists(PK) AND active = :true AND stock - reserved >= :qty`.
+1. `Update` product: `SET reserved = reserved + :qty` with optimistic-lock `ConditionExpression: attribute_exists(PK) AND active = :true AND reserved = :expectedReserved AND stock >= :minStock` (where `:expectedReserved` is the reserved count from the pre-read and `:minStock = expectedReserved + :qty`).
 2. `Put` reservation with `ConditionExpression: attribute_not_exists(PK)`.
 3. `Put` transaction (`PENDING`) with `ConditionExpression: attribute_not_exists(PK)` — enforces reference uniqueness.
 4. `Put` delivery.

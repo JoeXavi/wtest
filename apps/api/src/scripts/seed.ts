@@ -40,7 +40,7 @@ async function main(): Promise<void> {
         currency: 'COP',
         usdUnitPrice: 20,
         usdRateCop: 2500,
-        stock: 48,
+        stock: 96,
         reserved: 0,
         image: {
           key: '/images/dev-hours.svg',

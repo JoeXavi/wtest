@@ -237,3 +237,84 @@ describe('payCheckout double-tap guard', () => {
     );
   });
 });
+
+describe('createCheckoutTransaction double-dispatch guard', () => {
+  it('condition blocks when already submitting', async () => {
+    const store = configureStore({
+      reducer: { checkout: checkoutReducer },
+      preloadedState: {
+        checkout: {
+          ...initialCheckoutState,
+          productId: 'prod_1',
+          hours: 1,
+          customer: {
+            email: 'a@b.co',
+            fullName: 'Ada',
+            phone: '+573001112233',
+            legalId: '123',
+            legalIdType: 'CC',
+          },
+          delivery: {
+            addressLine1: 'Calle 1 #2-3',
+            city: 'Bogota',
+            region: 'Cund',
+            country: 'CO',
+          },
+          ui: { ...initialCheckoutState.ui, submitting: true },
+        },
+      },
+    });
+
+    const result = await store.dispatch(createCheckoutTransaction());
+    expect(createCheckoutTransaction.rejected.match(result)).toBe(true);
+    expect((result as { meta: { condition?: boolean } }).meta.condition).toBe(
+      true,
+    );
+    expect(store.getState().checkout.ui.submitting).toBe(true);
+    expect(store.getState().checkout.ui.error).toBeNull();
+  });
+
+  it('condition blocks when a transaction already exists', async () => {
+    const store = configureStore({
+      reducer: { checkout: checkoutReducer },
+      preloadedState: {
+        checkout: {
+          ...initialCheckoutState,
+          productId: 'prod_1',
+          hours: 1,
+          customer: {
+            email: 'a@b.co',
+            fullName: 'Ada',
+            phone: '+573001112233',
+            legalId: '123',
+            legalIdType: 'CC',
+          },
+          delivery: {
+            addressLine1: 'Calle 1 #2-3',
+            city: 'Bogota',
+            region: 'Cund',
+            country: 'CO',
+          },
+          transaction: {
+            id: 'NOR-1',
+            reference: 'NOR-1',
+            status: 'PENDING',
+            breakdown: {
+              itemCents: 5_000_000,
+              baseFeeCents: 150_000,
+              deliveryFeeCents: 800_000,
+              totalCents: 5_950_000,
+            },
+          },
+        },
+      },
+    });
+
+    const result = await store.dispatch(createCheckoutTransaction());
+    expect(createCheckoutTransaction.rejected.match(result)).toBe(true);
+    expect((result as { meta: { condition?: boolean } }).meta.condition).toBe(
+      true,
+    );
+    expect(store.getState().checkout.transaction?.reference).toBe('NOR-1');
+  });
+});

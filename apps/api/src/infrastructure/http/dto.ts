@@ -86,10 +86,10 @@ export class StartCheckoutDto {
   @Length(1, 40)
   productId!: string;
 
-  @ApiProperty({ minimum: 1, maximum: 48 })
+  @ApiProperty({ minimum: 1, maximum: 96 })
   @IsInt()
   @Min(1)
-  @Max(48)
+  @Max(96)
   hours!: number;
 
   @ApiProperty({ type: CustomerInputDto })

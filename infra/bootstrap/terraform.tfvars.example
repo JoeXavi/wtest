@@ -1,2 +1,2 @@
 aws_region       = "us-east-1"
-state_bucket_name = "norte-terraform-state-REPLACE_ME"
+state_bucket_name = "norte-terraform-state-wtest"

@@ -1,5 +1,5 @@
 import type { Middleware } from '@reduxjs/toolkit';
-import type { CheckoutState } from './slices/checkoutSlice';
+import type { CheckoutState, PspSession } from './slices/checkoutSlice';
 import { TOKEN_TTL_MS } from './slices/checkoutSlice';
 
 export const STORAGE_KEY = 'norte.checkout.v1';
@@ -22,6 +22,7 @@ export interface PersistedCheckout {
     } | null;
     transaction: CheckoutState['transaction'];
     acceptance: CheckoutState['acceptance'];
+    pspSession?: PspSession | null;
   };
 }
 
@@ -56,6 +57,11 @@ function whitelist(checkout: CheckoutState): PersistedCheckout['checkout'] {
     card,
     transaction: checkout.transaction,
     acceptance: checkout.acceptance,
+    ...(checkout.transaction?.status === 'PENDING' &&
+    checkout.step === 'summary' &&
+    checkout.pspSession
+      ? { pspSession: checkout.pspSession }
+      : {}),
   };
 }
 
@@ -96,6 +102,15 @@ export function loadPersistedCheckout(): PersistedCheckout | null {
     ) {
       delete parsed.checkout.card.token;
       delete parsed.checkout.card.tokenExpiresAt;
+    }
+    if (
+      parsed.checkout.pspSession &&
+      !(
+        parsed.checkout.transaction?.status === 'PENDING' &&
+        parsed.checkout.step === 'summary'
+      )
+    ) {
+      delete parsed.checkout.pspSession;
     }
     return parsed;
   } catch {

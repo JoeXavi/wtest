@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { TransactionDto } from '@norte/contracts';
 import {
   isTerminal,
@@ -13,6 +13,8 @@ import type { DomainError } from '../../domain/errors';
 
 @Injectable()
 export class SyncTransactionStatusUseCase {
+  private readonly logger = new Logger(SyncTransactionStatusUseCase.name);
+
   constructor(
     @Inject(TRANSACTION_REPOSITORY) private readonly transactions: TransactionRepository,
     @Inject(PAYMENT_GATEWAY) private readonly payments: PaymentGateway,
@@ -25,9 +27,30 @@ export class SyncTransactionStatusUseCase {
 
     if (!isTerminal(tx.status) && tx.pspTransactionId) {
       const status = await this.payments.getChargeStatus(tx.pspTransactionId);
-      if (status.ok && isTerminal(status.value.status)) {
-        const finalized = await this.finalize(tx, status.value.status, status.value.statusMessage);
-        if (finalized.ok) tx = finalized.value;
+      if (!status.ok) {
+        this.logger.warn(
+          `sync getChargeStatus failed reference=${reference} pspId=${tx.pspTransactionId} error=${JSON.stringify(status.error)}`,
+        );
+      } else if (isTerminal(status.value.status)) {
+        const finalized = await this.finalize(
+          tx,
+          status.value.status,
+          status.value.statusMessage,
+        );
+        if (!finalized.ok) {
+          this.logger.warn(
+            `sync finalize failed reference=${reference} pspStatus=${status.value.status} error=${JSON.stringify(finalized.error)}`,
+          );
+        } else {
+          this.logger.log(
+            `sync finalized reference=${reference} status=${finalized.value.status}`,
+          );
+          tx = finalized.value;
+        }
+      } else {
+        this.logger.log(
+          `sync still pending reference=${reference} pspStatus=${status.value.status}`,
+        );
       }
     }
 

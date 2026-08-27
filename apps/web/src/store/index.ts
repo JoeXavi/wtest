@@ -31,7 +31,7 @@ function rehydrateCheckout(): CheckoutState {
       : null,
     transaction: persisted.checkout.transaction,
     acceptance: persisted.checkout.acceptance,
-    pspSession: null,
+    pspSession: persisted.checkout.pspSession ?? null,
   };
 
   return base;

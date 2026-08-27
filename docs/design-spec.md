@@ -124,7 +124,7 @@ A `Sheet` over a dimmed product page. Two sections in one form.
 
 ### Screen 3 — Summary (`/checkout/summary`)
 
-Material backdrop. Front strip shows `JoeXavi Dev Hours × {n}h` and `{brand} •••• {last4}`. Back layer shows the server-computed breakdown: hours subtotal, base fee, delivery fee, hairline, total, with the USD equivalent as helper text. Then the delivery address block, then two required acceptance checkboxes linking the PSP policy permalinks. CTA: **Pay COP {total}**.
+Material backdrop. Front strip shows `JoeXavi Dev Hours × {n}h` and `{brand} •••• {last4}`. Back layer shows the server-computed breakdown: hours subtotal, base fee, delivery fee, hairline, total, with the USD equivalent as helper text. Then the delivery address block, then two required acceptance checkboxes linking the PSP policy permalinks. CTA: **Pay COP {total}**. Ghost **Cancel** below returns to `/`; if a `PENDING` transaction exists it is voided server-side first.
 
 - The CTA is the only place a charge is initiated. It sets `loading`, disables re-entry, and is guarded server-side by the transaction state machine so a double tap cannot double charge.
 - Both checkboxes must be ticked; the acceptance tokens are fetched fresh (they are short-lived JWTs) and never persisted.
@@ -175,16 +175,19 @@ stateDiagram-v2
 
 A small middleware writes a whitelisted subset of `checkout` to `localStorage` under a versioned key (`norte.checkout.v1`); a version bump discards old state instead of migrating.
 
-- **Persisted:** `step`, `hours`, `productId`, `customer`, `delivery`, `card.brand`, `card.last4`, `transaction`, `acceptance`.
+- **Persisted:** `step`, `hours`, `productId`, `customer`, `delivery`, `card.brand`, `card.last4`, `transaction`, `acceptance`, and `pspSession` while an unpaid `PENDING` checkout is on summary.
 - **Never persisted, never in Redux:** PAN, CVC, expiry.
 - `card.token` is persisted only while a transaction is in flight and is cleared on any terminal status. It is single-use and short-lived, so it is treated as a credential with a 30-minute TTL stamped alongside it.
 
 ### Rehydration on load
 
-1. Persisted `transaction.status === 'PENDING'` → route straight to `/checkout/result` and resume polling.
+1. `PENDING` **and** `step === 'result'` → route to `/checkout/result` and resume polling.
 2. Terminal status → show the result once; clear on **Back to store**.
-3. No transaction but `step` is `details` or `summary` → restore the forms and return to that step.
-4. Stale entry (TTL expired or schema mismatch) → discard and start at `/`.
+3. `PENDING` **and** `step === 'summary'` → route to `/checkout/summary` (reserved, not paid yet).
+4. No transaction but `step` is `details` or `summary` → restore the forms and return to that step.
+5. Stale entry (TTL expired or schema mismatch) → discard and start at `/`.
+
+Summary exposes a ghost **Cancel** control. If a `PENDING` transaction exists, the client calls `POST /api/checkout/transactions/:reference/cancel` (maps to `VOIDED`, releases stock) before returning to `/`.
 
 This is what satisfies the spec's requirement that the app recover client progress across a refresh.
 
@@ -240,7 +243,8 @@ Required test cases:
 - Sheet focus trap, `Escape` close, and focus restore.
 - Reducer transitions for all wizard edges in the diagram.
 - Persistence middleware never writes PAN, CVC, or expiry — asserted against the serialized payload.
-- Rehydration for all four cases in section 5.
+- Rehydration for all five cases in section 5.
+- Cancel on summary voids unpaid `PENDING` and returns to `/`.
 - Full happy path with MSW: approved transaction decrements displayed hours.
 - Declined path preserves delivery data and clears the card.
 - Double-tap on pay dispatches exactly one request.

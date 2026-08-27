@@ -125,22 +125,29 @@ export class PspHttpAdapter implements PaymentGateway {
         signal: AbortSignal.timeout(15_000),
       });
 
+      const text = await response.text();
       if (!response.ok) {
-        const text = await response.text();
-        this.logger.warn(`createCharge failed: ${response.status} ${text.slice(0, 200)}`);
+        this.logger.warn(
+          `createCharge failed status=${response.status} body=${text.slice(0, 1000)}`,
+        );
         return err({
           code: 'PSP_UNAVAILABLE',
           message: `Charge creation failed with ${response.status}`,
         });
       }
 
-      const body = (await response.json()) as {
+      const body = JSON.parse(text) as {
         data: {
           id: string;
           status: TransactionStatus;
           status_message?: string;
+          reference?: string;
         };
       };
+
+      this.logger.log(
+        `createCharge PSP response reference=${input.reference} pspId=${body.data.id} status=${body.data.status} message=${body.data.status_message ?? 'none'} raw=${text.slice(0, 1000)}`,
+      );
 
       return ok({
         pspTransactionId: body.data.id,
@@ -165,13 +172,17 @@ export class PspHttpAdapter implements PaymentGateway {
         },
         signal: AbortSignal.timeout(10_000),
       });
+      const text = await response.text();
       if (!response.ok) {
+        this.logger.warn(
+          `getChargeStatus failed pspId=${pspTransactionId} status=${response.status} body=${text.slice(0, 1000)}`,
+        );
         return err({
           code: 'PSP_UNAVAILABLE',
           message: `Status lookup failed with ${response.status}`,
         });
       }
-      const body = (await response.json()) as {
+      const body = JSON.parse(text) as {
         data: {
           id: string;
           status: TransactionStatus;
@@ -179,6 +190,9 @@ export class PspHttpAdapter implements PaymentGateway {
           reference: string;
         };
       };
+      this.logger.log(
+        `getChargeStatus PSP response pspId=${body.data.id} reference=${body.data.reference} status=${body.data.status} message=${body.data.status_message ?? 'none'} raw=${text.slice(0, 1000)}`,
+      );
       return ok({
         pspTransactionId: body.data.id,
         status: body.data.status,

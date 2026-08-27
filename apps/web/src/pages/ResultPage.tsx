@@ -1,28 +1,33 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { copy } from '@/copy';
 import { Button, Money, Pill } from '@/components/ui';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   backToStore,
+  clearCheckoutError,
   pollTransaction,
   retryWithNewCard,
 } from '@/store/slices/checkoutSlice';
 import { fetchProducts, refreshStock } from '@/store/slices/productsSlice';
+import {
+  backoffDelayMs,
+  isRetryableRejectPayload,
+  MAX_RETRIES,
+  rejectRetryAfterMs,
+} from '@/services/retryPolicy';
 import styles from './ResultPage.module.css';
-
-const MAX_POLL_MS = 5 * 60 * 1000;
-const BACKOFF = [1000, 2000, 3000];
 
 export function ResultPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const checkout = useAppSelector((s) => s.checkout);
-  const { transaction, card, hours, delivery, customer, step, productId } =
+  const { transaction, card, hours, delivery, customer, step, productId, ui } =
     checkout;
-  const attemptRef = useRef(0);
-  const startedRef = useRef(Date.now());
+  const attemptsRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startChainRef = useRef<(() => void) | null>(null);
+  const [pollExhausted, setPollExhausted] = useState(false);
 
   useEffect(() => {
     if (step !== 'result' && !transaction) {
@@ -31,41 +36,81 @@ export function ResultPage() {
   }, [step, transaction, navigate]);
 
   useEffect(() => {
-    if (!transaction || transaction.status !== 'PENDING') return;
+    if (!transaction || transaction.status !== 'PENDING') {
+      return;
+    }
 
     let cancelled = false;
-    startedRef.current = Date.now();
-    attemptRef.current = 0;
+
+    const scheduleRetry = (payload?: unknown) => {
+      if (cancelled || attemptsRef.current >= MAX_RETRIES) {
+        setPollExhausted(true);
+        return;
+      }
+      const delay = backoffDelayMs(
+        attemptsRef.current,
+        rejectRetryAfterMs(payload),
+      );
+      attemptsRef.current += 1;
+      timerRef.current = setTimeout(() => void tick(), delay);
+    };
 
     const tick = async () => {
       if (cancelled) return;
-      if (Date.now() - startedRef.current > MAX_POLL_MS) return;
 
       const result = await dispatch(pollTransaction(transaction.reference));
       if (cancelled) return;
 
       if (pollTransaction.fulfilled.match(result)) {
-        if (result.payload.status === 'PENDING') {
-          const delay =
-            BACKOFF[Math.min(attemptRef.current, BACKOFF.length - 1)]!;
-          attemptRef.current += 1;
-          timerRef.current = setTimeout(() => void tick(), delay);
+        if (result.payload.status !== 'PENDING') {
+          setPollExhausted(false);
+          return;
         }
-      } else {
-        const delay =
-          BACKOFF[Math.min(attemptRef.current, BACKOFF.length - 1)]!;
-        attemptRef.current += 1;
-        timerRef.current = setTimeout(() => void tick(), delay);
+        scheduleRetry();
+        return;
+      }
+
+      if (pollTransaction.rejected.match(result)) {
+        const payload = result.payload as
+          | { message?: string; status?: number }
+          | string
+          | undefined;
+
+        if (
+          payload &&
+          typeof payload === 'object' &&
+          payload.status === 404
+        ) {
+          dispatch(backToStore());
+          navigate('/', { replace: true });
+          return;
+        }
+
+        if (!isRetryableRejectPayload(payload)) {
+          return;
+        }
+
+        scheduleRetry(payload);
       }
     };
 
-    void tick();
+    const startChain = () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      attemptsRef.current = 0;
+      setPollExhausted(false);
+      dispatch(clearCheckoutError());
+      void tick();
+    };
+
+    startChainRef.current = startChain;
+    startChain();
 
     return () => {
       cancelled = true;
+      startChainRef.current = null;
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [transaction?.reference, transaction?.status, dispatch]);
+  }, [transaction?.reference, transaction?.status, dispatch, navigate]);
 
   const status = transaction?.status ?? 'PENDING';
   const brandLabel =
@@ -90,12 +135,9 @@ export function ResultPage() {
     navigate('/checkout');
   };
 
-  const onCheckAgain = () => {
-    if (!transaction) return;
-    attemptRef.current = 0;
-    startedRef.current = Date.now();
-    void dispatch(pollTransaction(transaction.reference));
-  };
+  const onCheckAgain = useCallback(() => {
+    startChainRef.current?.();
+  }, []);
 
   return (
     <main className={styles.page}>
@@ -106,15 +148,24 @@ export function ResultPage() {
       >
         {status === 'PENDING' ? (
           <>
-            <div className={`${styles.mark} ${styles.markPending}`}>
-              <span className={styles.spinner} aria-hidden="true" />
-            </div>
-            <h1 className={styles.title}>{copy.pendingTitle}</h1>
-            <p className={styles.body}>{copy.pendingHint}</p>
+            {!pollExhausted ? (
+              <div className={`${styles.mark} ${styles.markPending}`}>
+                <span className={styles.spinner} aria-hidden="true" />
+              </div>
+            ) : null}
+            <h1 className={styles.title}>
+              {pollExhausted ? copy.pendingExhausted : copy.pendingTitle}
+            </h1>
+            {!pollExhausted ? (
+              <p className={styles.body}>{copy.pendingHint}</p>
+            ) : null}
             {transaction ? (
               <p className={styles.body}>
                 {copy.reference}: {transaction.reference}
               </p>
+            ) : null}
+            {ui.error ? (
+              <p className={styles.body} role="alert">{ui.error}</p>
             ) : null}
             <Button variant="ghost" onClick={onCheckAgain}>
               {copy.checkAgain}

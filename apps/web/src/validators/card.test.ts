@@ -1,7 +1,9 @@
 import {
   detectBrand,
+  isCardholderValid,
   isCvcValid,
   isExpiryValid,
+  isPersonNameValid,
   luhnValid,
   formatCardNumber,
   formatExpiryInput,
@@ -73,5 +75,29 @@ describe('formatters', () => {
   it('inserts slash in expiry', () => {
     expect(formatExpiryInput('0827')).toBe('08/27');
     expect(formatExpiryInput('08')).toBe('08');
+  });
+});
+
+describe('isCardholderValid', () => {
+  it('requires at least 5 characters for PSP card_holder', () => {
+    expect(isCardholderValid('Ada')).toBe(false);
+    expect(isCardholderValid('Ada L')).toBe(true);
+    expect(isCardholderValid('Ada Lovelace')).toBe(true);
+  });
+
+  it('rejects invalid characters', () => {
+    expect(isCardholderValid('Ada1')).toBe(false);
+    expect(isCardholderValid('John3')).toBe(false);
+  });
+});
+
+describe('isPersonNameValid', () => {
+  it('allows short names for delivery full name', () => {
+    expect(isPersonNameValid('Ana')).toBe(true);
+    expect(isPersonNameValid('A')).toBe(false);
+  });
+
+  it('rejects invalid characters', () => {
+    expect(isPersonNameValid('Ana1')).toBe(false);
   });
 });

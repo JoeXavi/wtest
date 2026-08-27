@@ -15,7 +15,8 @@
     "dev:web": "pnpm --filter @norte/web dev",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
-    "seed": "pnpm --filter @norte/api seed"
+    "seed": "pnpm --filter @norte/api seed",
+    "restock": "pnpm --filter @norte/api restock"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.32.1",

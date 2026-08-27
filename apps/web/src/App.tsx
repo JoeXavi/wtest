@@ -8,6 +8,7 @@ import {
 } from 'react-router-dom';
 import { ProductPage } from '@/pages/ProductPage';
 import { useAppSelector } from '@/store/hooks';
+import { rehydrationPath } from '@/store/rehydration';
 import { Skeleton } from '@/components/ui';
 
 const CheckoutPage = lazy(() =>
@@ -25,25 +26,9 @@ function RehydrationRouter() {
   const { step, transaction } = useAppSelector((s) => s.checkout);
 
   useEffect(() => {
-    // Rehydration rules from design-spec §5
-    if (transaction?.status === 'PENDING') {
-      navigate('/checkout/result', { replace: true });
-      return;
-    }
-    if (
-      transaction &&
-      (transaction.status === 'APPROVED' ||
-        transaction.status === 'DECLINED' ||
-        transaction.status === 'ERROR' ||
-        transaction.status === 'VOIDED')
-    ) {
-      navigate('/checkout/result', { replace: true });
-      return;
-    }
-    if (!transaction && (step === 'details' || step === 'summary')) {
-      navigate(step === 'details' ? '/checkout' : '/checkout/summary', {
-        replace: true,
-      });
+    const path = rehydrationPath(step, transaction);
+    if (path) {
+      navigate(path, { replace: true });
     }
   }, []); // intentionally once on mount
 

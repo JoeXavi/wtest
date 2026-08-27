@@ -16,6 +16,7 @@ import { ListProductsUseCase } from './application/use-cases/list-products.use-c
 import { GetProductUseCase, GetStockUseCase } from './application/use-cases/get-product.use-case';
 import { StartCheckoutUseCase } from './application/use-cases/start-checkout.use-case';
 import { PayTransactionUseCase } from './application/use-cases/pay-transaction.use-case';
+import { CancelCheckoutUseCase } from './application/use-cases/cancel-checkout.use-case';
 import {
   HandlePaymentEventUseCase,
   SyncTransactionStatusUseCase,
@@ -102,6 +103,7 @@ import { GlobalExceptionFilter } from './infrastructure/http/result.mapper';
     GetStockUseCase,
     StartCheckoutUseCase,
     PayTransactionUseCase,
+    CancelCheckoutUseCase,
     SyncTransactionStatusUseCase,
     HandlePaymentEventUseCase,
     GetCustomerUseCase,

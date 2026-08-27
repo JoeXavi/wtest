@@ -90,6 +90,64 @@ describe('persistence middleware', () => {
     expect(parsed.checkout.card.token).toBeUndefined();
   });
 
+  it('persists pspSession for unpaid PENDING on summary', () => {
+    const state: CheckoutState = {
+      ...initialCheckoutState,
+      step: 'summary',
+      transaction: {
+        id: 'NOR-1',
+        reference: 'NOR-1',
+        status: 'PENDING',
+        breakdown: {
+          itemCents: 5_000_000,
+          baseFeeCents: 150_000,
+          deliveryFeeCents: 800_000,
+          totalCents: 5_950_000,
+        },
+      },
+      pspSession: {
+        publicKey: 'pub',
+        acceptanceToken: 't1',
+        acceptPersonalAuthToken: 't2',
+        policyLinks: {
+          endUserPolicy: 'https://example.com/p',
+          personalDataAuth: 'https://example.com/d',
+        },
+      },
+    };
+    const parsed = JSON.parse(serializeCheckout(state));
+    expect(parsed.checkout.pspSession?.acceptanceToken).toBe('t1');
+  });
+
+  it('omits pspSession after terminal status', () => {
+    const state: CheckoutState = {
+      ...initialCheckoutState,
+      step: 'result',
+      transaction: {
+        id: 'NOR-1',
+        reference: 'NOR-1',
+        status: 'APPROVED',
+        breakdown: {
+          itemCents: 5_000_000,
+          baseFeeCents: 150_000,
+          deliveryFeeCents: 800_000,
+          totalCents: 5_950_000,
+        },
+      },
+      pspSession: {
+        publicKey: 'pub',
+        acceptanceToken: 't1',
+        acceptPersonalAuthToken: 't2',
+        policyLinks: {
+          endUserPolicy: 'https://example.com/p',
+          personalDataAuth: 'https://example.com/d',
+        },
+      },
+    };
+    const parsed = JSON.parse(serializeCheckout(state));
+    expect(parsed.checkout.pspSession).toBeUndefined();
+  });
+
   it('middleware persists on dispatch', () => {
     const store = createAppStore({ checkout: initialCheckoutState });
     store.dispatch(setProductId('prod_1'));

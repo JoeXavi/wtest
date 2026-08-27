@@ -65,6 +65,7 @@ pnpm typecheck
 | GET | `/api/stock/:productId` | Availability |
 | POST | `/api/checkout/transactions` | Reserve + create PENDING tx |
 | POST | `/api/checkout/transactions/:ref/pay` | Charge via PSP |
+| POST | `/api/checkout/transactions/:ref/cancel` | Void unpaid PENDING tx + release stock |
 | GET | `/api/transactions/:ref` | Poll / finalize |
 | GET | `/api/customers/:id` | Customer |
 | GET/PATCH | `/api/deliveries/:ref` | Delivery |

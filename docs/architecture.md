@@ -150,6 +150,12 @@ Base path `/api`. Swagger UI at `/docs`, OpenAPI JSON at `/docs-json`, Postman c
 
   Computes the integrity signature server-side, submits the charge, stores `pspTransactionId`. Guarded by the `status = PENDING` condition, so a double tap cannot double charge. Errors: `409 INVALID_TRANSACTION_STATE`, `502 PSP_UNAVAILABLE`.
 
+- **`POST /api/checkout/transactions/:reference/cancel`** → `200`.
+
+  Response: `{ transactionReference, status: "VOIDED", amounts }`.
+
+  Voids an unpaid checkout: allowed only while `status = PENDING` and no `pspTransactionId` (pay never submitted). Releases the reservation atomically via the same path as a declined payment. Already `VOIDED` is idempotent. Errors: `409 INVALID_TRANSACTION_STATE`, `404 TRANSACTION_NOT_FOUND`.
+
 - **`GET /api/transactions/:reference`** → `200 { reference, status, statusMessage?, amounts, card: { brand, last4 }, product: { name, hours }, finalizedAt? }`.
 
   The polling endpoint. While `PENDING` it queries the PSP; on the first terminal status it finalizes atomically (commit or release stock, assign the product to the delivery) before responding.

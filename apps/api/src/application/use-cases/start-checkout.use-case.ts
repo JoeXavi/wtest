@@ -126,6 +126,7 @@ export class StartCheckoutUseCase {
     const writeResult = await this.transactions.startCheckout({
       productId: productResult.value.productId,
       quantity: cmd.hours,
+      expectedReserved: productResult.value.reserved,
       reservationExpiresAt: this.clock.nowEpochSeconds() + ttlSeconds,
       transaction,
       delivery,
