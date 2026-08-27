@@ -1,5 +1,8 @@
 locals {
-  github_sub_repo = "repo:${var.github_org}/${var.github_repo}:*"
+  github_sub_repo = [
+    "repo:${var.github_org}/${var.github_repo}:*",
+    "repo:${var.github_org}@*/${var.github_repo}@*:*",
+  ]
   oidc_provider_arn = (
     var.create_oidc_provider
     ? aws_iam_openid_connect_provider.github[0].arn
@@ -44,7 +47,7 @@ data "aws_iam_policy_document" "assume_role" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = [local.github_sub_repo]
+      values   = local.github_sub_repo
     }
   }
 }
