@@ -98,6 +98,11 @@ variable "psp_events_secret_ssm_arn" {
   type        = string
 }
 
+variable "api_token_ssm_arn" {
+  description = "SSM SecureString ARN for API_TOKEN"
+  type        = string
+}
+
 variable "pricing_base_fee_cents" {
   description = "Base fee in cents"
   type        = number

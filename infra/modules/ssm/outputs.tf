@@ -13,6 +13,11 @@ output "psp_events_secret_arn" {
   value       = aws_ssm_parameter.psp_events_secret.arn
 }
 
+output "api_token_arn" {
+  description = "SSM parameter ARN for API_TOKEN"
+  value       = aws_ssm_parameter.api_token.arn
+}
+
 output "parameter_names" {
   description = "SSM parameter names"
   value       = local.parameter_names

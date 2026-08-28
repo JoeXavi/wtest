@@ -115,6 +115,7 @@ module "ecs" {
   psp_private_key_ssm_arn      = module.ssm.psp_private_key_arn
   psp_integrity_secret_ssm_arn = module.ssm.psp_integrity_secret_arn
   psp_events_secret_ssm_arn    = module.ssm.psp_events_secret_arn
+  api_token_ssm_arn            = module.ssm.api_token_arn
   pricing_base_fee_cents       = var.pricing_base_fee_cents
   pricing_delivery_fee_cents   = var.pricing_delivery_fee_cents
   reservation_ttl_seconds      = var.reservation_ttl_seconds

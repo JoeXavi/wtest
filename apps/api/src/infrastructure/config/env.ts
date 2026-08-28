@@ -18,6 +18,7 @@ export const envSchema = z.object({
   PRICING_DELIVERY_FEE_CENTS: z.coerce.number().int().nonnegative().default(800000),
   RESERVATION_TTL_SECONDS: z.coerce.number().int().positive().default(900),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  API_TOKEN: z.string().min(16),
 });
 
 export type Env = z.infer<typeof envSchema>;

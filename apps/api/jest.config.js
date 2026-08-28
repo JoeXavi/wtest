@@ -13,6 +13,8 @@ module.exports = {
     'src/application/**/*.ts',
     'src/shared/**/*.ts',
     'src/infrastructure/http/result.mapper.ts',
+    'src/infrastructure/http/api-token.guard.ts',
+    'src/infrastructure/http/public.decorator.ts',
     'src/infrastructure/config/env.ts',
     'src/infrastructure/system/**/*.ts',
     '!src/**/*.spec.ts',

@@ -19,6 +19,32 @@ describe('httpClient', () => {
     });
   });
 
+  it('sends Authorization Bearer from config', async () => {
+    let auth: string | null = null;
+    server.use(
+      rest.get('http://localhost/api/ping', (req, res, ctx) => {
+        auth = req.headers.get('Authorization');
+        return res(ctx.json({ ok: true }));
+      }),
+    );
+    await httpClient('/ping');
+    expect(auth).toBe('Bearer local-dev-api-token');
+  });
+
+  it('does not override an existing Authorization header', async () => {
+    let auth: string | null = null;
+    server.use(
+      rest.get('http://localhost/api/ping', (req, res, ctx) => {
+        auth = req.headers.get('Authorization');
+        return res(ctx.json({ ok: true }));
+      }),
+    );
+    await httpClient('/ping', {
+      headers: { Authorization: 'Bearer custom-token' },
+    });
+    expect(auth).toBe('Bearer custom-token');
+  });
+
   it('throws HttpError with message from body', async () => {
     server.use(
       rest.get('http://localhost/api/fail', (_req, res, ctx) =>

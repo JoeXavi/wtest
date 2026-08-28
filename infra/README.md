@@ -73,6 +73,7 @@ Placeholder SecureString parameters are created under `/norte-prod/...`. Replace
 aws ssm put-parameter --name /norte-prod/PSP_PRIVATE_KEY --type SecureString --value '…' --overwrite
 aws ssm put-parameter --name /norte-prod/PSP_INTEGRITY_SECRET --type SecureString --value '…' --overwrite
 aws ssm put-parameter --name /norte-prod/PSP_EVENTS_SECRET --type SecureString --value '…' --overwrite
+aws ssm put-parameter --name /norte-prod/API_TOKEN --type SecureString --value '…' --overwrite
 ```
 
 Then force a new ECS deployment so tasks pick up the secrets:
@@ -92,6 +93,7 @@ Create a **production** environment (required for apply / deploy workflows) with
 | `AWS_WEB_DEPLOY_ROLE_ARN` | `web_deploy_role_arn` output |
 | `AWS_API_DEPLOY_ROLE_ARN` | `api_deploy_role_arn` output |
 | `AWS_TERRAFORM_ROLE_ARN` | `terraform_role_arn` output |
+| `VITE_API_TOKEN` | same value as SSM `/norte-prod/API_TOKEN` (baked into the SPA at build) |
 
 **Variables** (repo or environment)
 

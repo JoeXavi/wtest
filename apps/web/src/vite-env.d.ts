@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL: string;
+  readonly VITE_API_TOKEN: string;
   readonly VITE_PSP_PUBLIC_KEY: string;
   readonly VITE_PSP_TOKENIZATION_URL: string;
 }

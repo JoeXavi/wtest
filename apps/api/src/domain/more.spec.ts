@@ -71,8 +71,10 @@ describe('Env validation', () => {
       PSP_PRIVATE_KEY: 'prv',
       PSP_INTEGRITY_SECRET: 'int',
       PSP_EVENTS_SECRET: 'ev',
+      API_TOKEN: 'local-dev-api-token',
     });
     expect(valid.TABLE_NAME).toBe('norte-main');
+    expect(valid.API_TOKEN).toBe('local-dev-api-token');
     expect(() => validateEnv({})).toThrow(/Invalid environment/);
   });
 });

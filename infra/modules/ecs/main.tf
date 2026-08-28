@@ -47,7 +47,8 @@ resource "aws_iam_role_policy" "execution_ssm" {
         Resource = [
           var.psp_private_key_ssm_arn,
           var.psp_integrity_secret_ssm_arn,
-          var.psp_events_secret_ssm_arn
+          var.psp_events_secret_ssm_arn,
+          var.api_token_ssm_arn
         ]
       }
     ]
@@ -163,7 +164,8 @@ resource "aws_ecs_task_definition" "api" {
       secrets = [
         { name = "PSP_PRIVATE_KEY", valueFrom = var.psp_private_key_ssm_arn },
         { name = "PSP_INTEGRITY_SECRET", valueFrom = var.psp_integrity_secret_ssm_arn },
-        { name = "PSP_EVENTS_SECRET", valueFrom = var.psp_events_secret_ssm_arn }
+        { name = "PSP_EVENTS_SECRET", valueFrom = var.psp_events_secret_ssm_arn },
+        { name = "API_TOKEN", valueFrom = var.api_token_ssm_arn }
       ]
 
       logConfiguration = {

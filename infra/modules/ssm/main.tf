@@ -3,6 +3,7 @@ locals {
     psp_private_key      = "/${var.name_prefix}/PSP_PRIVATE_KEY"
     psp_integrity_secret = "/${var.name_prefix}/PSP_INTEGRITY_SECRET"
     psp_events_secret    = "/${var.name_prefix}/PSP_EVENTS_SECRET"
+    api_token            = "/${var.name_prefix}/API_TOKEN"
   }
 }
 
@@ -46,6 +47,21 @@ resource "aws_ssm_parameter" "psp_events_secret" {
 
   tags = merge(var.tags, {
     Name = local.parameter_names.psp_events_secret
+  })
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "api_token" {
+  name        = local.parameter_names.api_token
+  description = "Shared API bearer token for NestJS + SPA"
+  type        = "SecureString"
+  value       = "REPLACE_ME"
+
+  tags = merge(var.tags, {
+    Name = local.parameter_names.api_token
   })
 
   lifecycle {

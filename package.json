@@ -15,6 +15,7 @@
     "dev:web": "pnpm --filter @norte/web dev",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
+    "db:setup": "pnpm --filter @norte/api db:setup",
     "seed": "pnpm --filter @norte/api seed",
     "restock": "pnpm --filter @norte/api restock"
   },

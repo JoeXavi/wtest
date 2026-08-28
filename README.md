@@ -73,6 +73,8 @@ pnpm typecheck
 | GET | `/health` | ALB health |
 | GET | `/docs` | Swagger UI |
 
+Protected `/api/*` routes (except webhooks) require `Authorization: Bearer <API_TOKEN>`. `GET /health` and `POST /api/webhooks/psp` stay public. Use the same value for `API_TOKEN` (API) and `VITE_API_TOKEN` (web).
+
 Amounts are **server-computed** (hours × 50.000 COP + 1.500 base + 8.000 delivery). Declined payments return **HTTP 200** with `status: DECLINED`.
 
 ## Coverage (local run)

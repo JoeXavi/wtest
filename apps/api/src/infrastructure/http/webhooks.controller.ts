@@ -2,9 +2,11 @@ import { Body, Controller, Get, Headers, Post, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { HandlePaymentEventUseCase } from '../../application/use-cases/sync-transaction.use-case';
+import { Public } from './public.decorator';
 import { matchResult } from './result.mapper';
 
 @ApiTags('webhooks')
+@Public()
 @Controller('api/webhooks')
 export class WebhooksController {
   constructor(private readonly handleEvent: HandlePaymentEventUseCase) {}
@@ -20,6 +22,7 @@ export class WebhooksController {
 }
 
 @ApiTags('health')
+@Public()
 @Controller()
 export class HealthController {
   @Get('health')

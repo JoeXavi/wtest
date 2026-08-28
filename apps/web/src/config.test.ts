@@ -2,12 +2,14 @@ import { config } from './config';
 
 const ENV_KEYS = [
   'VITE_API_BASE_URL',
+  'VITE_API_TOKEN',
   'VITE_PSP_PUBLIC_KEY',
   'VITE_PSP_TOKENIZATION_URL',
 ] as const;
 
 const defaults: Record<(typeof ENV_KEYS)[number], string | undefined> = {
   VITE_API_BASE_URL: process.env.VITE_API_BASE_URL,
+  VITE_API_TOKEN: process.env.VITE_API_TOKEN,
   VITE_PSP_PUBLIC_KEY: process.env.VITE_PSP_PUBLIC_KEY,
   VITE_PSP_TOKENIZATION_URL: process.env.VITE_PSP_TOKENIZATION_URL,
 };
@@ -26,6 +28,7 @@ describe('config', () => {
 
   it('reads Vite env keys set by setupEnv', () => {
     expect(config.apiBaseUrl).toBe('http://localhost/api');
+    expect(config.apiToken).toBe('local-dev-api-token');
     expect(config.pspPublicKey).toBe('pub_test_key');
     expect(config.pspTokenizationUrl).toBe('http://localhost/psp/v1');
   });
@@ -36,6 +39,7 @@ describe('config', () => {
     }
 
     expect(config.apiBaseUrl).toBe('/api');
+    expect(config.apiToken).toBe('');
     expect(config.pspPublicKey).toBe('');
     expect(config.pspTokenizationUrl).toBe('');
   });

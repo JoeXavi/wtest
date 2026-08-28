@@ -9,6 +9,9 @@ export const config = {
   get apiBaseUrl() {
     return process.env.VITE_API_BASE_URL || '/api';
   },
+  get apiToken() {
+    return process.env.VITE_API_TOKEN || '';
+  },
   get pspPublicKey() {
     return process.env.VITE_PSP_PUBLIC_KEY || '';
   },

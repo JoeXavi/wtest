@@ -35,10 +35,14 @@ async function bootstrap(): Promise<void> {
 
   const swagger = new DocumentBuilder()
     .setTitle('Norte Checkout API')
-    .setDescription('Checkout API for JoeXavi Dev Hours')
+    .setDescription('Checkout API for JoeXavi Dev Hours. Protected routes require Bearer API_TOKEN.')
     .setVersion('0.0.1')
+    .addBearerAuth()
+    .addSecurityRequirements('bearer')
     .build();
-  SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swagger));
+  SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swagger), {
+    swaggerOptions: { persistAuthorization: true },
+  });
 
   const port = config.get<number>('PORT') ?? 3000;
   await app.listen(port);

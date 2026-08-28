@@ -2,10 +2,11 @@
   "info": {
     "name": "Norte Checkout API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Public collection for the Norte checkout API"
+    "description": "Public collection for the Norte checkout API. Set apiToken to match API_TOKEN."
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://localhost:3000" }
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "apiToken", "value": "local-dev-api-token" }
   ],
   "item": [
     {
@@ -19,6 +20,9 @@
       "name": "List products",
       "request": {
         "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{apiToken}}" }
+        ],
         "url": "{{baseUrl}}/api/products"
       }
     },
@@ -26,6 +30,9 @@
       "name": "Get product",
       "request": {
         "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{apiToken}}" }
+        ],
         "url": "{{baseUrl}}/api/products/01PRODUCTDEVHOURS0"
       }
     },
@@ -33,6 +40,9 @@
       "name": "Get stock",
       "request": {
         "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{apiToken}}" }
+        ],
         "url": "{{baseUrl}}/api/stock/01PRODUCTDEVHOURS0"
       }
     },
@@ -40,7 +50,10 @@
       "name": "Start checkout",
       "request": {
         "method": "POST",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{apiToken}}" }
+        ],
         "body": {
           "mode": "raw",
           "raw": "{\n  \"productId\": \"01PRODUCTDEVHOURS0\",\n  \"hours\": 3,\n  \"customer\": {\n    \"email\": \"ana@example.com\",\n    \"fullName\": \"Ana Rivera\",\n    \"phone\": \"3001234567\",\n    \"legalId\": \"1234567890\",\n    \"legalIdType\": \"CC\"\n  },\n  \"delivery\": {\n    \"addressLine1\": \"Cra 7 #32-16\",\n    \"city\": \"Bogotá\",\n    \"region\": \"Cundinamarca\",\n    \"country\": \"CO\",\n    \"phone\": \"3001234567\",\n    \"recipientName\": \"Ana Rivera\"\n  }\n}"
@@ -52,7 +65,10 @@
       "name": "Pay transaction",
       "request": {
         "method": "POST",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{apiToken}}" }
+        ],
         "body": {
           "mode": "raw",
           "raw": "{\n  \"cardToken\": \"tok_test\",\n  \"installments\": 1,\n  \"acceptanceToken\": \"acc\",\n  \"acceptPersonalAuth\": \"auth\",\n  \"cardBrand\": \"visa\",\n  \"cardLast4\": \"4242\"\n}"
@@ -64,6 +80,9 @@
       "name": "Get transaction",
       "request": {
         "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{apiToken}}" }
+        ],
         "url": "{{baseUrl}}/api/transactions/{{reference}}"
       }
     },
@@ -71,6 +90,9 @@
       "name": "Get delivery",
       "request": {
         "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{apiToken}}" }
+        ],
         "url": "{{baseUrl}}/api/deliveries/{{reference}}"
       }
     },
@@ -78,7 +100,10 @@
       "name": "Patch delivery",
       "request": {
         "method": "PATCH",
-        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{apiToken}}" }
+        ],
         "body": {
           "mode": "raw",
           "raw": "{\n  \"city\": \"Medellín\"\n}"

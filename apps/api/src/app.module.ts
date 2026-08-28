@@ -43,6 +43,7 @@ import {
   DeliveriesController,
 } from './infrastructure/http/checkout.controller';
 import { HealthController, WebhooksController } from './infrastructure/http/webhooks.controller';
+import { ApiTokenGuard } from './infrastructure/http/api-token.guard';
 import { GlobalExceptionFilter } from './infrastructure/http/result.mapper';
 
 @Module({
@@ -86,6 +87,7 @@ import { GlobalExceptionFilter } from './infrastructure/http/result.mapper';
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: ApiTokenGuard },
     {
       provide: DYNAMO_CLIENT,
       inject: [ConfigService],

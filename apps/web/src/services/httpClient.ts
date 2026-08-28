@@ -34,6 +34,9 @@ export async function httpClient<T>(
   if (init.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
+  if (config.apiToken && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${config.apiToken}`);
+  }
 
   const response = await fetch(`${config.apiBaseUrl}${path}`, {
     ...init,
