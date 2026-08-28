@@ -1,19 +1,18 @@
-function read(key: string, fallback = ''): string {
-  if (typeof process !== 'undefined' && process.env[key]) {
-    return process.env[key]!;
-  }
-  return fallback;
-}
-
-/** Runtime config — lazy getters so Jest setup can set process.env first. */
+/**
+ * Runtime config — lazy getters so Jest setupFiles can set process.env first.
+ *
+ * Each key MUST be a literal `process.env.VITE_*` so Vite `define` can inline
+ * values at build time. Dynamic access (`process.env[key]`) is NOT replaced
+ * and becomes empty in the browser.
+ */
 export const config = {
   get apiBaseUrl() {
-    return read('VITE_API_BASE_URL', '/api');
+    return process.env.VITE_API_BASE_URL || '/api';
   },
   get pspPublicKey() {
-    return read('VITE_PSP_PUBLIC_KEY', '');
+    return process.env.VITE_PSP_PUBLIC_KEY || '';
   },
   get pspTokenizationUrl() {
-    return read('VITE_PSP_TOKENIZATION_URL', '');
+    return process.env.VITE_PSP_TOKENIZATION_URL || '';
   },
 };

@@ -5,6 +5,19 @@ import path from 'node:path';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, path.resolve(__dirname), '');
 
+  if (mode === 'production') {
+    if (!env.VITE_PSP_PUBLIC_KEY?.trim()) {
+      throw new Error(
+        'VITE_PSP_PUBLIC_KEY is required for production builds (set in CI / .env)',
+      );
+    }
+    if (!env.VITE_PSP_TOKENIZATION_URL?.trim()) {
+      throw new Error(
+        'VITE_PSP_TOKENIZATION_URL is required for production builds (set in CI / .env)',
+      );
+    }
+  }
+
   return {
     plugins: [react()],
     resolve: {
