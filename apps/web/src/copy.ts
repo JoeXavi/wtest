@@ -1,5 +1,5 @@
 export const copy = {
-  brand: 'Norte',
+  brand: 'JoeXavi Creation Studio',
   productName: 'JoeXavi Dev Hours',
   productDescription:
     'Senior full-stack pairing time. Ship features, untangle architecture, and leave with clearer next steps.',

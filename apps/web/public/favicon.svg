@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="JoeXavi">
+  <style>
+    .tile { fill: #0F4C5C; }
+    .mark { fill: #F6F3EE; }
+    @media (prefers-color-scheme: dark) {
+      .tile { fill: #F6F3EE; }
+      .mark { fill: #0F4C5C; }
+    }
+  </style>
+  <rect class="tile" width="32" height="32" rx="7"/>
+  <!-- J -->
+  <path
+    class="mark"
+    d="M11.5 6.5c1.05 0 1.9.85 1.9 1.9v10.35c0 2.9-1.85 4.75-4.7 4.75-1.85 0-3.35-.7-4.2-1.85l1.55-1.7c.55.7 1.35 1.1 2.4 1.1 1.45 0 2.35-1 2.35-2.65V8.4c0-1.05.85-1.9 1.7-1.9z"
+  />
+  <!-- X -->
+  <path
+    class="mark"
+    d="M15.2 6.5h3.55l2.85 4.85 2.85-4.85H28l-4.6 7.25L28.15 25.5h-3.65l-2.95-5.05-2.95 5.05h-3.6l4.65-7.35L15.2 6.5z"
+  />
+</svg>
