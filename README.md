@@ -1,8 +1,8 @@
-# Norte — checkout for JoeXavi Dev Hours
+# WTEST — checkout for JoeXavi Dev Hours
 
 Public monorepo implementing a mobile-first checkout SPA and NestJS API. Pay with a credit card through a sandbox Payment Service Provider (**PSP**), reserve stock in DynamoDB, and show the result.
 
-> The repository intentionally avoids the PSP company name in code, docs, and config keys.
+> Following spec driven development.
 
 ## Live URLs
 
@@ -113,4 +113,4 @@ This solution was built with Cursor as a coding assistant: architecture docs, he
 
 ## License
 
-Private evaluation / interview exercise. Do not share solutions with other candidates.
+Private evaluation / interview exercise.
