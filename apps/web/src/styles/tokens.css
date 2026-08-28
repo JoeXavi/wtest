@@ -16,7 +16,7 @@
   --color-scrim: rgb(28 25 23 / 0.48);
 
   /* Typography */
-  --font-display: ui-serif, Georgia, 'Times New Roman', serif;
+  --font-display: 'Roboto', sans-serif;
   --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   --text-display: 28px;

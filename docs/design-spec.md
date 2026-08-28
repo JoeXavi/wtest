@@ -47,9 +47,9 @@ All pairs meet WCAG AA (4.5:1) for body text; white on `--color-primary` and on 
 
 ### Typography
 
-No web fonts. System stacks only, so there is zero font download and zero layout shift.
+Display titles use Roboto (loaded from Google Fonts). Body/UI stays on a system sans stack for zero download and zero layout shift on those surfaces.
 
-- `--font-display: ui-serif, Georgia, "Times New Roman", serif`
+- `--font-display: "Roboto", sans-serif`
 - `--font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
 
 Mobile scale (rem-based, root 16px):
