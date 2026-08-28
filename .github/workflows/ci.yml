@@ -44,6 +44,13 @@ jobs:
         run: pnpm test:cov
 
       - name: Build
+        env:
+          # Compile-time placeholders so `vite build` (production mode) can run.
+          # Real values are injected only in deploy-web.yml.
+          VITE_API_BASE_URL: /api
+          VITE_API_TOKEN: ci-placeholder-api-token
+          VITE_PSP_PUBLIC_KEY: pub_test_ci_placeholder
+          VITE_PSP_TOKENIZATION_URL: https://sandbox.example-psp.co/v1
         run: pnpm build
 
       - name: Upload coverage artifacts
