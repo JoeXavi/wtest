@@ -8,8 +8,8 @@ Public monorepo implementing a mobile-first checkout SPA and NestJS API. Pay wit
 
 | Surface | URL |
 | --- | --- |
-| Storefront | _pending deploy_ → `https://joexavisa.dev` |
-| API (Swagger) | _pending deploy_ → `https://api.joexavisa.dev/docs` |
+| Storefront | `https://joexavisa.dev` |
+| API (Swagger) | `https://api.joexavisa.dev/docs` |
 | Health | `https://api.joexavisa.dev/health` |
 
 ## Stack
@@ -93,7 +93,9 @@ Paste CI artifact summaries here after the first green pipeline.
 
 ## Deploy
 
-See [infra/README.md](infra/README.md). High level:
+Production is live (see [Live URLs](#live-urls)). Day-2 deploys and recreate steps: [infra/README.md](infra/README.md).
+
+High-level recreate:
 
 1. Bootstrap Terraform state bucket
 2. Apply `infra/envs/prod`
